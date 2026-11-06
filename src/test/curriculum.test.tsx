@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { chapters, isAvailable, levels } from "@/content/curriculum";
+import { chapters as catalog } from "@/content/curriculum-catalog";
+import { loadChapter } from "@/content/load-chapter";
 
 describe("curriculum", () => {
+  it("keeps the lightweight catalog and lazy chapter modules in sync", async () => {
+    expect(catalog, "Run bun run generate:catalog after changing chapter metadata").toEqual(
+      chapters.map(({ id, level, title, summary, minutes, blocks }) => ({
+        id,
+        level,
+        title,
+        summary,
+        minutes,
+        available: Boolean(blocks?.length),
+      })),
+    );
+    expect(await Promise.all(catalog.map(({ id }) => loadChapter(id)))).toEqual(chapters);
+  });
   it("has four levels", () => {
     expect(levels.map((l) => l.level)).toEqual([1, 2, 3, 4]);
   });

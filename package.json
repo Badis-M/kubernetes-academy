@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "generate:catalog": "bun scripts/generate-curriculum-catalog.mjs",
     "check:labs": "bun scripts/check-labs.mjs",
     "check:types": "tsc --noEmit",
     "check:lint": "bun scripts/check-lint.mjs",

@@ -8,7 +8,7 @@ Relecture terminée sur le checkout local `ffec215` avec ses changements non com
 | 2 · Éditorial FR/EN | Lecture intégrale des 60 chapitres, 162 questions, 120 indices et 147 blocs de solution ; pages hors cours relues. | Difficulté des distracteurs perfectible ; métadonnées R22 corrigées. |
 | 3 · Schémas | Vingt-sept variantes de schémas disponibles, dont les timelines de snapshot etcd et CSI. | Les modèles illustrent les contrats des labs. Voir les constats de la dernière passe. |
 | 4 · Rendu et interactions | 264 vues automatisées, inspection manuelle des planches de captures et détails ciblés FR/EN mobile/bureau ; débordements corrigés. | Échantillonnage des zones visuelles, pas lecture pixel par pixel ; 500 non provoquée ; pas d’audit lecteur d’écran complet. |
-| 5 · Régressions | La dernière passe confirme 208 tests applicatifs, 62 tests E2E, TypeScript, lint, build et contrôles hors ligne des labs. | Dette lint/bundle héritée ; tests simulés distincts du runtime Kubernetes. |
+| 5 · Régressions | Le suivi F1–F6 confirme 209 tests applicatifs, 62 tests E2E, TypeScript, lint et build. Les contrôles hors ligne des labs sont consignés dans la passe précédente. | Dette lint héritée ; tests simulés distincts du runtime Kubernetes. |
 
 **Légende :** « Relu » = lecture manuelle des sources dans les deux langues, y compris commandes et fichiers affichés. « Contrôlé » = balayage navigateur et inspection des captures décrits dans le [journal](manual-review-log.md), sans garantie sur chaque pixel. Un constat ouvert n’annule pas la lecture. « Lecture » dans la colonne lab ne signifie jamais exécution réelle. Les scripts de navigation n’ont pas validé automatiquement toutes les bonnes réponses : celles-ci ont été confrontées manuellement aux cours.
 
@@ -236,3 +236,31 @@ La passe éditoriale transversale a vérifié les textes bilingues du corpus com
 | F6 | P3 | Quiz FR/EN. Des distracteurs restent faciles, par exemple la copie de fichiers attribuée au Service headless dans StatefulSets. L’audit n’a trouvé ni doublon d’option ni biais global de position. | Remplacer progressivement les distracteurs trop éloignés des erreurs plausibles, en gardant la réponse correcte. |
 
 Contrôles réussis avec Bun 1.4.2 : 208 tests applicatifs, 62 tests navigateur, TypeScript, lint (12 diagnostics hérités gelés), build, vérification hors ligne de 134 fichiers de lab et suites Python. Le comportement du site a été examiné en Chromium local.
+
+
+## Suivi F1–F6 — 2026-11-06
+
+| ID | Statut | Correction et preuve |
+| --- | --- | --- |
+| F1 | Corrigé | Accueil et programme utilisent un catalogue léger. Le lecteur charge le module du chapitre demandé. Le HTML SSR du lecteur inclut les données de cette leçon pour l’hydratation. Navigation programme → Pods vérifiée dans les quatre configurations, avec chargement du module Pods et sans chargement de CSI. |
+| F2 | Corrigé | Le journal de Réconciliation traduit la création et la suppression en FR. Les identifiants Kubernetes restent lisibles. Les deux événements ont été reproduits en FR/EN. |
+| F3 | Corrigé | Cibles d’au moins 44 px pour les commandes vérifiées d’Architecture, Réconciliation et Déploiements, activées au clavier dans les deux langues et formats. |
+| F4 | Corrigé | Le texte courant des timelines apparaît sous les commandes. Sur les petits écrans, les branches RBAC et Observabilité s’ouvrent une par une. Sur bureau, elles restent visibles côte à côte. En FR à 320 px, les hauteurs initiales passent d’environ 1 437 à 889 px pour RBAC et de 1 332 à 884 px pour Observabilité. |
+| F5 | Corrigé | La dernière étape CSI précise en FR que restaurer le volume ne reconstitue pas l’état API Kubernetes. |
+| F6 | Corrigé sur les cas ciblés | Six distracteurs remplacés dans StatefulSets, Sauvegarde et reprise et RBAC avancé. Les variantes portent sur des confusions plausibles entre readiness, DNS, cohérence de données, horodatage, intégrité et sélection RBAC. Les réponses correctes conservent leur position. Les trois quiz donnent 3/3 avec les réponses attendues dans les quatre configurations. |
+
+### Poids JavaScript avant et après
+
+Mesures en kB décimaux. Les fichiers sont mesurés sur disque puis compressés individuellement avec gzip niveau 9. Chaque page est ouverte en FR dans un contexte Chromium neuf avec les ressources tierces bloquées. Le total de route additionne les scripts chargés à froid, sans compter le HTML ni le CSS.
+
+| Mesure | Brut avant → après | Gzip avant → après | Écart gzip |
+| --- | ---: | ---: | ---: |
+| Plus gros fichier JS | 1 371,4 → 378,4 | 432,5 → 120,0 | −72,3 % |
+| Accueil | 1 488,3 → 507,9 | 473,2 → 165,8 | −65,0 % |
+| Programme | 1 419,1 → 438,7 | 449,2 → 141,8 | −68,4 % |
+| Chapitre Pods | 1 552,9 → 573,3 | 491,6 → 184,5 | −62,5 % |
+| Chapitre CSI | 1 552,9 → 573,3 | 491,6 → 184,5 | −62,5 % |
+
+Le document HTML gzip passe de 13,8 à 22,2 kB sur Pods et de 14,9 à 22,4 kB sur CSI. Le coût de sérialisation du chapitre reste inférieur au gain JS. L’ancien chiffre de 437,42 kB venait du rapport de build. Dans ce même rapport, le plus gros fichier passe à 121,41 kB gzip. Le build ne signale plus de fichier client au-dessus de 500 kB. Les mesures portent sur des poids locaux, pas sur un temps de chargement en production.
+
+Contrôle du Worker local en FR/EN à 320×900 et 1 280×900. 264 vues, huit redirections et 112 captures de schémas, avec inspection ciblée des corrections. Aucun débordement horizontal ni erreur JavaScript sur le parcours. 209 tests applicatifs, 62 tests navigateur, TypeScript, contrôle lint et build réussis. [Journal de vérification](manual-review-log.md#suivi-f1f6--2026-11-06).

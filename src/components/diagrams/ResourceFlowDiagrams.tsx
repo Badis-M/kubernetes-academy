@@ -1,8 +1,31 @@
+import { useId } from "react";
 import { ArrowDown } from "lucide-react";
 import type { L } from "@/content/types";
 import { useLang } from "@/lib/i18n";
 
 type Flow = { title: L; start: string | L; steps: { relation: L; target: string | L }[] };
+
+function FlowSteps({ flow }: { flow: Flow }) {
+  const { tr } = useLang();
+  return (
+    <ol className="m-0 list-none space-y-1 p-0 text-center">
+      <li className="rounded-lg bg-surface-2 px-2 py-2 font-mono text-xs [overflow-wrap:anywhere]">
+        {typeof flow.start === "string" ? flow.start : tr(flow.start)}
+      </li>
+      {flow.steps.map(({ relation, target }) => (
+        <li key={typeof target === "string" ? target : target.en} className="min-w-0">
+          <span className="flex items-center justify-center gap-1 py-1 text-xs text-muted-foreground">
+            <ArrowDown className="size-3.5 shrink-0" aria-hidden="true" />
+            {tr(relation)}
+          </span>
+          <div className="rounded-lg bg-surface-2 px-2 py-2 font-mono text-xs [overflow-wrap:anywhere]">
+            {typeof target === "string" ? target : tr(target)}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 function ResourceFlowDiagram({
   title,
@@ -17,34 +40,40 @@ function ResourceFlowDiagram({
 }) {
   const { tr } = useLang();
 
+  const groupId = useId();
+
   return (
     <figure className="@container my-8 rounded-2xl border border-border bg-surface/70 p-4 sm:p-5">
       <figcaption className="mb-4 font-semibold text-foreground">{tr(title)}</figcaption>
       <div
-        className={`grid gap-3 ${columns === 3 ? "@min-[38rem]:grid-cols-3" : columns === 2 ? "@min-[34rem]:grid-cols-2" : ""}`}
+        className={`gap-3 ${columns === 3 ? "hidden @min-[38rem]:grid @min-[38rem]:grid-cols-3" : "grid"} ${columns === 2 ? "@min-[34rem]:grid-cols-2" : ""}`}
       >
         {flows.map((flow) => (
           <div key={flow.title.en} className="min-w-0 rounded-xl border border-border p-3">
             <div className="mb-3 text-sm font-semibold text-foreground">{tr(flow.title)}</div>
-            <ol className="m-0 list-none space-y-1 p-0 text-center">
-              <li className="rounded-lg bg-surface-2 px-2 py-2 font-mono text-xs [overflow-wrap:anywhere]">
-                {typeof flow.start === "string" ? flow.start : tr(flow.start)}
-              </li>
-              {flow.steps.map(({ relation, target }) => (
-                <li key={typeof target === "string" ? target : target.en} className="min-w-0">
-                  <span className="flex items-center justify-center gap-1 py-1 text-xs text-muted-foreground">
-                    <ArrowDown className="size-3.5 shrink-0" aria-hidden="true" />
-                    {tr(relation)}
-                  </span>
-                  <div className="rounded-lg bg-surface-2 px-2 py-2 font-mono text-xs [overflow-wrap:anywhere]">
-                    {typeof target === "string" ? target : tr(target)}
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <FlowSteps flow={flow} />
           </div>
         ))}
       </div>
+      {columns === 3 && (
+        <div className="space-y-2 @min-[38rem]:hidden">
+          {flows.map((flow, index) => (
+            <details
+              key={flow.title.en}
+              name={groupId}
+              open={index === 0}
+              className="rounded-xl border border-border"
+            >
+              <summary className="min-h-11 cursor-pointer rounded-xl px-3 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-primary">
+                {tr(flow.title)}
+              </summary>
+              <div className="px-3 pb-3">
+                <FlowSteps flow={flow} />
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
       <p className="mt-4 text-sm text-muted-foreground">{tr(explanation)}</p>
     </figure>
   );

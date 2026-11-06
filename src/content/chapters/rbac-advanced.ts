@@ -164,7 +164,7 @@ export const rbacAdvanced: Chapter = {
             "Dans un ClusterRole contributeur sélectionné",
           ),
           l("Only by editing the generated rules field", "Uniquement en éditant rules généré"),
-          l("In the Pod annotations", "Dans les annotations du Pod"),
+          l("In a Role in the binding namespace", "Dans un Role du namespace du binding"),
         ],
         0,
         l(
@@ -178,7 +178,10 @@ export const rbacAdvanced: Chapter = {
           "Pourquoi un list restreint par resourceNames peut-il être refusé ?",
         ),
         [
-          l("ConfigMaps cannot be listed", "Les ConfigMaps ne peuvent pas être listés"),
+          l(
+            "The client should use a label selector instead of a field selector",
+            "Le client devrait utiliser un sélecteur de labels à la place d’un sélecteur de champ",
+          ),
           l(
             "The request omitted its matching metadata.name field selector",
             "La requête omet le field selector metadata.name correspondant",

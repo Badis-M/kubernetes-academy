@@ -202,16 +202,16 @@ export const statefulsets: Chapter = {
         ),
         [
           l(
-            "StatefulSets cannot use volumes",
-            "Les StatefulSets ne peuvent pas utiliser de volumes",
+            "The files would prove replication if the two Pods were Ready",
+            "Les fichiers prouveraient la réplication si les deux Pods étaient Ready",
           ),
           l(
             "Application synchronization is not supplied by StatefulSet",
             "La synchronisation applicative n’est pas fournie par StatefulSet",
           ),
           l(
-            "The headless Service copies the files between replicas",
-            "Le Service headless copie les fichiers entre réplicas",
+            "Stable DNS identities guarantee the replicas converge on the same data",
+            "Des identités DNS stables garantissent que les réplicas convergent vers les mêmes données",
           ),
         ],
         1,

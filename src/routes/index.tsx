@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen, Boxes, FlaskConical, Network } from "lucide-react";
-import { chapters, chaptersOf, isAvailable, levels } from "@/content/curriculum";
+import { chapters, chaptersOf, isAvailable, levels } from "@/content/curriculum-catalog";
 import { ui, useLang } from "@/lib/i18n";
 import { useProgress } from "@/lib/progress";
 import { ArchitectureDiagram } from "@/components/diagrams/ArchitectureDiagram";

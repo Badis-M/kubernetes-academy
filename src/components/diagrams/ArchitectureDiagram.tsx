@@ -277,14 +277,14 @@ export function ArchitectureDiagram() {
             {workerNode}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => {
               if (step === null || step >= steps.length - 1) setStep(null);
               setPlaying((p) => !p);
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
           >
             {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
             {playing
@@ -300,7 +300,7 @@ export function ArchitectureDiagram() {
             aria-label={lang === "fr" ? "Étape suivante" : "Next step"}
             disabled={step === steps.length - 1}
             onClick={() => selectStep((step ?? -1) + 1)}
-            className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-50"
+            className="grid size-11 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground disabled:opacity-50"
           >
             <SkipForward className="size-3.5" />
           </button>
@@ -311,7 +311,7 @@ export function ArchitectureDiagram() {
               setPlaying(false);
               setStep(null);
             }}
-            className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground"
+            className="grid size-11 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
           >
             <RotateCcw className="size-3.5" />
           </button>

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2, Circle, Clock, Hourglass } from "lucide-react";
-import { chaptersOf, isAvailable, levels } from "@/content/curriculum";
+import { chaptersOf, isAvailable, levels } from "@/content/curriculum-catalog";
 import { ui, useLang } from "@/lib/i18n";
 import { useProgress } from "@/lib/progress";
 import { levelBg, levelText } from "@/components/academy/LevelBadge";

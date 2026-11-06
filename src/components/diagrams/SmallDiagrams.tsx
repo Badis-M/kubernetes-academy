@@ -221,7 +221,7 @@ export function DeploymentTreeDiagram() {
               setRev(2);
               setPlaying(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-40"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-40"
           >
             <Rocket className="size-3.5" />
             {fr ? "Déployer nginx:1.27" : "Roll out nginx:1.27"}
@@ -230,7 +230,7 @@ export function DeploymentTreeDiagram() {
             type="button"
             disabled={!rolling}
             onClick={() => setPlaying(!playing)}
-            className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40"
+            className="min-h-11 rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40"
           >
             {playing && rolling ? "Pause" : fr ? "Lecture" : "Play"}
           </button>
@@ -242,7 +242,7 @@ export function DeploymentTreeDiagram() {
               if (newCount + oldCount <= total && newCount < total) setNewCount((n) => n + 1);
               else if (oldCount > 0) setOldCount((o) => o - 1);
             }}
-            className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40"
+            className="min-h-11 rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40"
           >
             {fr ? "Étape suivante" : "Next step"}
           </button>
@@ -254,7 +254,7 @@ export function DeploymentTreeDiagram() {
               setOldCount(3);
               setNewCount(0);
             }}
-            className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground"
+            className="grid size-11 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
             aria-label={fr ? "Revenir au début" : "Reset"}
           >
             <RotateCcw className="size-3.5" />

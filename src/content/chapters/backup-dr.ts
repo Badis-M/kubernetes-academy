@@ -141,10 +141,13 @@ export const backupDr: Chapter = {
             "It was written after the selected recovery point",
             "Elle a été écrite après le point de reprise choisi",
           ),
-          l("RWO removes the newest row", "RWO retire la dernière ligne"),
           l(
-            "tar automatically replicates later writes",
-            "tar réplique automatiquement les écritures ultérieures",
+            "The restore filters orders by timestamp during extraction",
+            "La restauration filtre les commandes par horodatage lors de l’extraction",
+          ),
+          l(
+            "The checksum rejects changes made to the source after capture",
+            "La somme de contrôle rejette les modifications de la source après la capture",
           ),
         ],
         0,

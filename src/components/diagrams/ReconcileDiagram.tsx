@@ -2,6 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 
+type ReconcileEvent = {
+  actual: number;
+  desired: number;
+  action: "create" | "delete";
+  count: number;
+};
+
+function describeEvent({ actual, desired, action, count }: ReconcileEvent, fr: boolean) {
+  if (fr)
+    return `observé ${actual} / désiré ${desired} → ${action === "create" ? "créer" : "supprimer"} ${count}`;
+  return `observe ${actual} / desire ${desired} → ${action} ${count}`;
+}
+
 type Pod = { id: string; state: "creating" | "running" | "terminating" };
 const rnd = () => Math.random().toString(36).slice(2, 7);
 
@@ -12,7 +25,7 @@ export function ReconcileDiagram() {
   const [pods, setPods] = useState<Pod[]>(() =>
     ["8x2kq", "p4m7d", "z9w3r"].map((id) => ({ id, state: "running" as const })),
   );
-  const [log, setLog] = useState<string[]>([]);
+  const [log, setLog] = useState<ReconcileEvent[]>([]);
   const desiredRef = useRef(desired);
   desiredRef.current = desired;
 
@@ -32,12 +45,20 @@ export function ReconcileDiagram() {
             state: "creating" as const,
           }));
           setLog((l) =>
-            [`observe ${live} / desire ${want} → create ${want - live}`, ...l].slice(0, 4),
+            [
+              { actual: live, desired: want, action: "create" as const, count: want - live },
+              ...l,
+            ].slice(0, 4),
           );
           next = [...next, ...add];
         } else if (live > want) {
           const remove = live - want;
-          setLog((l) => [`observe ${live} / desire ${want} → delete ${remove}`, ...l].slice(0, 4));
+          setLog((l) =>
+            [{ actual: live, desired: want, action: "delete" as const, count: remove }, ...l].slice(
+              0,
+              4,
+            ),
+          );
           next = next.map((p, i) => (i >= want ? { ...p, state: "terminating" as const } : p));
         } else if (terminating.length === 0 && prev.every((p) => p.state === "running")) {
           return prev;
@@ -64,7 +85,7 @@ export function ReconcileDiagram() {
                 type="button"
                 aria-label={fr ? "Diminuer le nombre de réplicas" : "Decrease replica count"}
                 onClick={() => setDesired((d) => Math.max(0, d - 1))}
-                className="rounded-md border border-border p-1.5 hover:bg-surface-2"
+                className="grid size-11 shrink-0 place-items-center rounded-md border border-border hover:bg-surface-2"
               >
                 <Minus className="size-3.5" />
               </button>
@@ -75,7 +96,7 @@ export function ReconcileDiagram() {
                 type="button"
                 aria-label={fr ? "Augmenter le nombre de réplicas" : "Increase replica count"}
                 onClick={() => setDesired((d) => Math.min(6, d + 1))}
-                className="rounded-md border border-border p-1.5 hover:bg-surface-2"
+                className="grid size-11 shrink-0 place-items-center rounded-md border border-border hover:bg-surface-2"
               >
                 <Plus className="size-3.5" />
               </button>
@@ -137,7 +158,7 @@ export function ReconcileDiagram() {
             ) : (
               log.map((l, i) => (
                 <div key={i} className={i === 0 ? "text-foreground/90" : ""}>
-                  replicaset-controller: {l}
+                  replicaset-controller: {describeEvent(l, fr)}
                 </div>
               ))
             )}

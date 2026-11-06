@@ -1,6 +1,13 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CheckCircle2, Clock, Cpu, Hourglass } from "lucide-react";
-import { chaptersOf, getChapter, isAvailable, levels, neighbours } from "@/content/curriculum";
+import {
+  chaptersOf,
+  getChapter,
+  isAvailable,
+  levels,
+  neighbours,
+} from "@/content/curriculum-catalog";
+import { loadChapter } from "@/content/load-chapter";
 import { ui, useLang } from "@/lib/i18n";
 import { useProgress } from "@/lib/progress";
 import { Blocks, Callout } from "@/components/academy/Blocks";
@@ -8,10 +15,10 @@ import { LevelBadge } from "@/components/academy/LevelBadge";
 
 export const Route = createFileRoute("/learn/$chapterId")({
   loaderDeps: ({ search }) => ({ lang: search.lang }),
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
     const c = getChapter(params.chapterId);
     if (!c) throw notFound();
-    return { id: c.id };
+    return loadChapter(c.id);
   },
   head: ({ params, match }) => {
     const c = getChapter(params.chapterId);
@@ -33,12 +40,10 @@ export const Route = createFileRoute("/learn/$chapterId")({
 });
 
 function Reader() {
-  const { id } = Route.useLoaderData();
-  const chapter = getChapter(id);
+  const chapter = Route.useLoaderData();
   const { lang, tr } = useLang();
   const { isDone, toggle, done } = useProgress();
-  if (!chapter) throw notFound();
-  const avail = isAvailable(chapter);
+  const avail = !!chapter.blocks?.length;
   const { prev, next } = neighbours(chapter.id);
   const level = levels.find((l) => l.level === chapter.level);
   if (!level) throw notFound();

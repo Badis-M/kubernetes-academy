@@ -146,7 +146,7 @@ export const csiSnapshotSequence = {
           title: l("Read the restored marker", "Relire le marqueur restauré"),
           description: l(
             "reader mounts restored-data and checks /data/marker.txt. This verifies the copied file. Restoring this volume does not restore Kubernetes API state.",
-            "reader monte restored-data et vérifie /data/marker.txt. Ce contrôle valide le fichier copié. La restauration du volume laisse l’état API Kubernetes intact.",
+            "reader monte restored-data et vérifie /data/marker.txt. Ce contrôle valide le fichier copié. La restauration du volume ne reconstitue pas l’état API Kubernetes.",
           ),
           states: [marker, ready, marker],
         },

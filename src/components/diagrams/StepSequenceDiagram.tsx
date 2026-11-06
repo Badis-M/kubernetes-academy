@@ -131,6 +131,17 @@ export function StepSequenceDiagram({
           {fr ? "Revenir au début" : "Reset"}
         </Button>
       </div>
+      {active && (
+        <div
+          className="mt-4 rounded-lg bg-surface-2 px-3 py-2 text-sm"
+          aria-live={playing ? "off" : "polite"}
+        >
+          <p className="font-medium">
+            {fr ? "Étape" : "Step"} {stepIndex + 1} / {scenario.steps.length} · {tr(active.title)}
+          </p>
+          <p className="mt-1 text-muted-foreground">{tr(active.description)}</p>
+        </div>
+      )}
       {scenario.timeline && (
         <div className="mt-4">
           <p className="mb-2 text-xs text-muted-foreground">{tr(scenario.timeline.caption)}</p>
@@ -253,17 +264,6 @@ export function StepSequenceDiagram({
           </li>
         ))}
       </ol>
-      {active && (
-        <div
-          className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-sm"
-          aria-live={playing ? "off" : "polite"}
-        >
-          <p className="font-medium">
-            {fr ? "Étape" : "Step"} {stepIndex + 1} / {scenario.steps.length}
-          </p>
-          <p className="mt-1 text-muted-foreground">{tr(active.description)}</p>
-        </div>
-      )}
     </figure>
   );
 }
