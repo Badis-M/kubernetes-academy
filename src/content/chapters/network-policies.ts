@@ -106,6 +106,7 @@ export const networkPolicies: Chapter = {
       "Expected: trusted succeeds while untrusted remains blocked. The peer podSelector without a namespaceSelector selects only Pods in the policy's namespace. A namespaceSelector and podSelector in the same peer item are ANDed; two list items are alternatives, ORed. A port list further restricts the peer match to TCP 80. Inspect YAML indentation carefully: a misplaced dash can allow all Pods in a namespace instead of one selected group.",
       "Attendu : trusted réussit et untrusted reste bloqué. Un podSelector de pair sans namespaceSelector sélectionne seulement les Pods du namespace de la politique. namespaceSelector et podSelector dans le même élément de pair se combinent avec ET ; deux éléments de liste sont des alternatives, donc OU. Les ports limitent encore le pair à TCP 80. Vérifiez l’indentation : un tiret mal placé peut autoriser tous les Pods d’un namespace au lieu d’un groupe précis.",
     ),
+    { type: "diagram", name: "network-policy-decisions" },
     h("egress", "Remember DNS when restricting a client", "Penser au DNS en limitant un client"),
     code("yaml", denyEgress, "lab/level-2/network-policies/deny-client-egress.yaml"),
     code(

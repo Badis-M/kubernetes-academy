@@ -7,11 +7,15 @@ import {
   note,
   list,
   labContext,
+  requireAbsentResource,
+  requireOwnedNamespace,
+  requireResourceUid,
   steps,
   quiz,
   question,
   challenge,
 } from "../lesson-kit";
+import priority from "../../../lab/level-3/advanced-scheduling/lab-spread-priority.yaml?raw";
 import spread from "../../../lab/level-3/advanced-scheduling/spread.yaml?raw";
 import strict from "../../../lab/level-3/advanced-scheduling/strict.yaml?raw";
 
@@ -46,7 +50,7 @@ export const advancedScheduling: Chapter = {
       "With maxSkew: 1, DoNotSchedule and two eligible hostname domains, three replicas may form 2/1. Strict hostname anti-affinity instead permits at most one matching Pod per host, leaving a third replica Pending on two hosts. minDomains: 2 changes the global minimum used by the skew calculation when fewer eligible domains exist; it does not create a missing node. Select the same labels that actually identify your replica group, and remember namespace selection determines which Pods are counted.",
       "Avec maxSkew: 1, DoNotSchedule et deux domaines hostname admissibles, trois réplicas peuvent former 2/1. L’anti-affinité stricte par hostname permet au contraire un seul Pod correspondant par hôte : le troisième reste Pending avec deux hôtes. minDomains: 2 change le minimum global utilisé dans le calcul du skew si les domaines admissibles deviennent insuffisants ; il ne crée aucun nœud. Sélectionnez les vrais labels du groupe de réplicas et rappelez-vous que le namespace détermine quels Pods sont comptés.",
     ),
-    ...labContext("lab-spread"),
+    ...labContext("lab-spread", "LAB_SPREAD_NAMESPACE_UID"),
     note(
       "warn",
       l("Bounded local experiment", "Expérience locale bornée"),
@@ -56,6 +60,8 @@ export const advancedScheduling: Chapter = {
       ),
     ),
     h("manifest", "Read the domain contract", "Lire le contrat de domaine"),
+    code("bash", requireAbsentResource("priorityclass", "lab-spread-priority")),
+    code("yaml", priority, "lab/level-3/advanced-scheduling/lab-spread-priority.yaml"),
     code("yaml", spread, "lab/level-3/advanced-scheduling/spread.yaml"),
     p(
       "The required node affinity excludes the control plane using its actual kind label. topologyKey uses the built-in hostname label, not an invented cloud zone. The labelSelector counts only app: spread-web in this namespace. value: 1000 controls queue priority relative to lower classes; preemptionPolicy: Never prevents this class from removing victims. Priority does not reserve CPU, overcome affinity or make an unhealthy node usable.",
@@ -65,11 +71,23 @@ export const advancedScheduling: Chapter = {
       title: l("Measure the distribution", "Mesurer la répartition"),
       code: {
         lang: "bash",
-        code: "k get nodes -L kubernetes.io/hostname,node-role.kubernetes.io/control-plane\nk get priorityclass lab-spread-priority\nk -n lab-spread apply -f lab/level-3/advanced-scheduling/spread.yaml\nk -n lab-spread rollout status deployment/spread-web --timeout=120s\nk -n lab-spread get pods -l app=spread-web -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName,PRIORITY:.spec.priority\nk -n lab-spread describe deployment spread-web",
+        code:
+          "LAB_SPREAD_PRIORITY_UID=\n" +
+          requireOwnedNamespace("lab-spread", "LAB_SPREAD_NAMESPACE_UID") +
+          " &&\n  " +
+          requireAbsentResource("priorityclass", "lab-spread-priority") +
+          " &&\n  " +
+          "LAB_SPREAD_PRIORITY_UID=$(k create -f lab/level-3/advanced-scheduling/lab-spread-priority.yaml -o jsonpath='{.metadata.uid}') &&\n  test -n \"$LAB_SPREAD_PRIORITY_UID\"" +
+          " &&\n  " +
+          "k -n lab-spread apply -f lab/level-3/advanced-scheduling/spread.yaml" +
+          " &&\n  " +
+          "k -n lab-spread rollout status deployment/spread-web --timeout=120s" +
+          " &&\n  " +
+          "k -n lab-spread get pods -l app=spread-web -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName,PRIORITY:.spec.priority",
       },
       explain: l(
-        "NotFound for the custom PriorityClass before applying is expected. Count actual Pods on each eligible worker. If a Pod is Pending, read its Events for requests, labels, topology and unrelated taints before weakening policy.",
-        "NotFound pour la classe personnalisée avant application est attendu. Comptez les Pods par worker admissible. Si un Pod reste Pending, lisez ses Events : requests, labels, topologie et autres taints, avant d’assouplir la politique.",
+        "The preflight must find no PriorityClass. The write block repeats the check and records the UID of the new class. Count actual Pods on each eligible worker. If a Pod is Pending, read its Events for requests, labels, topology and unrelated taints before weakening policy.",
+        "Le contrôle préalable doit confirmer l’absence de la PriorityClass. Le bloc d’écriture répète ce contrôle et enregistre l’UID de la nouvelle classe. Comptez les Pods par worker admissible. Si un Pod reste Pending, lisez ses Events : requests, labels, topologie et autres taints, avant d’assouplir la politique.",
       ),
       expected: {
         text: l(
@@ -195,6 +213,17 @@ export const advancedScheduling: Chapter = {
       "Remove namespaced and global exercise objects",
       "Retirer les objets locaux et globaux de l’exercice",
     ),
-    code("bash", "k delete namespace lab-spread\nk delete priorityclass lab-spread-priority"),
+    code(
+      "bash",
+      requireOwnedNamespace("lab-spread", "LAB_SPREAD_NAMESPACE_UID") +
+        " &&\n  " +
+        "k delete namespace lab-spread",
+    ),
+    code(
+      "bash",
+      requireResourceUid("priorityclass", "lab-spread-priority", "LAB_SPREAD_PRIORITY_UID") +
+        " &&\n  " +
+        "k delete priorityclass lab-spread-priority",
+    ),
   ],
 };

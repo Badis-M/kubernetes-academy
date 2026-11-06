@@ -49,6 +49,7 @@ export const ha: Chapter = {
         },
       },
     ] satisfies Block[]),
+    { type: "diagram", name: "ha-failure-domains" },
     ...labContext("lab-ha"),
     ...([
       {

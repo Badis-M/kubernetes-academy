@@ -8,19 +8,35 @@ import { levelBg, levelText } from "@/components/academy/LevelBadge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
+  head: ({ match }) => ({
     meta: [
-      { title: "Kubernetes Academy — Learn Kubernetes from zero to Operators" },
+      {
+        title:
+          match.search.lang === "fr"
+            ? "Kubernetes Academy — Apprendre Kubernetes, des bases aux Operators"
+            : "Kubernetes Academy — Learn Kubernetes from zero to Operators",
+      },
       {
         name: "description",
         content:
-          "A free, visual, hands-on Kubernetes academy in English and French: architecture, guided labs on kind, Helm, GitOps, CRDs and Operators.",
+          match.search.lang === "fr"
+            ? "Une académie Kubernetes gratuite, visuelle et pratique en français et en anglais : architecture, labs kind, Helm, GitOps, CRD et Operators."
+            : "A free, visual, hands-on Kubernetes academy in English and French: architecture, guided labs on kind, Helm, GitOps, CRDs and Operators.",
       },
-      { property: "og:title", content: "Kubernetes Academy — Learn Kubernetes visually" },
+      {
+        property: "og:title",
+        content:
+          match.search.lang === "fr"
+            ? "Kubernetes Academy — Apprendre Kubernetes, des bases aux Operators"
+            : "Kubernetes Academy — Learn Kubernetes visually",
+      },
       {
         property: "og:description",
         content:
-          "Interactive architecture diagrams and real hands-on labs, from beginner to expert.",
+          match.search.lang === "fr"
+            ? "Une académie Kubernetes gratuite, visuelle et pratique en français et en anglais : architecture, labs kind, Helm, GitOps, CRD et Operators."
+            : "Interactive architecture diagrams and real hands-on labs, from beginner to expert.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

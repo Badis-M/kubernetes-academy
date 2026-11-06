@@ -59,7 +59,7 @@ export const helmReleases: Chapter = {
     ),
     code(
       "bash",
-      "helm version --short\nhelm dependency build lab/level-3/helm-releases/release-demo --skip-refresh\nhelm dependency list lab/level-3/helm-releases/release-demo\nhelm lint lab/level-3/helm-releases/release-demo --kube-version 1.35.0\nhelm template delivery lab/level-3/helm-releases/release-demo --namespace lab-releases --kube-version 1.35.0 -f lab/level-3/helm-releases/release-two.yaml",
+      "helm version --short &&\nhelm dependency build lab/level-3/helm-releases/release-demo --skip-refresh &&\nhelm dependency list lab/level-3/helm-releases/release-demo &&\nhelm lint lab/level-3/helm-releases/release-demo --kube-version 1.35.0 &&\nhelm template delivery lab/level-3/helm-releases/release-demo --namespace lab-releases --kube-version 1.35.0 -f lab/level-3/helm-releases/release-two.yaml",
     ),
     h(
       "values",
@@ -96,7 +96,7 @@ export const helmReleases: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "helm install delivery lab/level-3/helm-releases/release-demo --kube-context kind-k8s-ops-lab --namespace lab-releases --wait --timeout 120s\nhelm history delivery --kube-context kind-k8s-ops-lab --namespace lab-releases\nhelm get values delivery --all --kube-context kind-k8s-ops-lab --namespace lab-releases\nk -n lab-releases get deployment delivery-web",
+          code: "helm install delivery lab/level-3/helm-releases/release-demo --kube-context kind-k8s-ops-lab --namespace lab-releases --wait --timeout 120s &&\nhelm history delivery --kube-context kind-k8s-ops-lab --namespace lab-releases &&\nhelm get values delivery --all --kube-context kind-k8s-ops-lab --namespace lab-releases &&\nk -n lab-releases get deployment delivery-web",
         },
         explain: l(
           "Record the successful revision and effective subchart values. Helm --wait follows readiness contracts; it does not establish business correctness or a successful user journey.",
@@ -113,7 +113,7 @@ export const helmReleases: Chapter = {
         title: l("Upgrade using explicit inputs", "Mettre à jour avec des entrées explicites"),
         code: {
           lang: "bash",
-          code: "helm upgrade delivery lab/level-3/helm-releases/release-demo --kube-context kind-k8s-ops-lab --namespace lab-releases --reset-values -f lab/level-3/helm-releases/release-two.yaml --wait --timeout 120s\nhelm history delivery --kube-context kind-k8s-ops-lab --namespace lab-releases\nk -n lab-releases get deployment,configmap -l app.kubernetes.io/instance=delivery",
+          code: "helm upgrade delivery lab/level-3/helm-releases/release-demo --kube-context kind-k8s-ops-lab --namespace lab-releases --reset-values -f lab/level-3/helm-releases/release-two.yaml --wait --timeout 120s &&\nhelm history delivery --kube-context kind-k8s-ops-lab --namespace lab-releases &&\nk -n lab-releases get deployment,configmap -l app.kubernetes.io/instance=delivery",
         },
         explain: l(
           "The message changes the configuration checksum, while the desired population becomes two. Inspect both the new ConfigMap and Pod template rather than trusting the CLI's exit code alone.",
@@ -228,7 +228,7 @@ export const helmReleases: Chapter = {
       [
         code(
           "bash",
-          "helm rollback delivery 1 --kube-context kind-k8s-ops-lab --namespace lab-releases --wait --timeout 120s\nhelm history delivery --kube-context kind-k8s-ops-lab --namespace lab-releases\nhelm get values delivery --all --kube-context kind-k8s-ops-lab --namespace lab-releases\nk -n lab-releases get deployment delivery-web",
+          "helm rollback delivery 1 --kube-context kind-k8s-ops-lab --namespace lab-releases --wait --timeout 120s &&\nhelm history delivery --kube-context kind-k8s-ops-lab --namespace lab-releases &&\nhelm get values delivery --all --kube-context kind-k8s-ops-lab --namespace lab-releases &&\nk -n lab-releases get deployment delivery-web",
         ),
         p(
           "The desired population returns to one and the message to Release one. The rollback creates a new revision whose inputs reproduce revision 1; it does not reset the current revision number to 1. History retention is bounded separately: --history-max defaults to 10 for upgrade and rollback, so older records may be removed. Helm history is not an immutable audit archive. Uninstall instead deletes release-owned resources and has different retention consequences, especially for charts with stateful storage or hooks.",
@@ -239,7 +239,7 @@ export const helmReleases: Chapter = {
     h("cleanup", "Cleanup", "Nettoyage"),
     code(
       "bash",
-      "helm uninstall delivery --kube-context kind-k8s-ops-lab --namespace lab-releases\nk delete namespace lab-releases",
+      "helm uninstall delivery --kube-context kind-k8s-ops-lab --namespace lab-releases &&\nk delete namespace lab-releases",
     ),
     p(
       "The generated charts/ archive is ignored and can be rebuilt from local source plus lock. No repository, registry, external controller, PVC or migration service was needed. Rendering and lint results remain distinct from executing this optional Kubernetes release sequence.",

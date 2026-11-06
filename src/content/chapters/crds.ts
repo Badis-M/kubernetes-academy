@@ -90,6 +90,14 @@ export const crds: Chapter = {
       "Le schéma OpenAPI structurel décrit champs et types pour valider, appliquer des défauts et élaguer de manière cohérente. CEL limite metadata.name à cinquante caractères et à un label DNS-1035 commençant par une lettre : le contrôleur le réutilise pour ses labels et un Service. Des noms comme hello.world ou 123 sont rejetés avant réconciliation sans dépendre d’une option de nommage assoupli. La validation doit être déterministe et bornée ; CEL ne peut interroger un compte externe. Les conditions forment une liste-map indexée par type pour des fusions prévisibles.",
     ),
     ...labContext("lab-crds"),
+    p(
+      "Python 3 is required. The four Greeting lessons share one receipt in LAB_GREETING_STATE. Create it only once in this shell and reuse the same path across these chapters. The helper creates an absent CRD, or verifies its recorded UID and exact server-returned spec; it never applies over an existing definition. Without the original receipt, stop. After a failed creation, inspect the partial state instead of deleting the receipt or adopting the type. Keep managers stopped while changing lessons.",
+      "Python 3 est requis. Les quatre cours Greeting partagent une preuve dans LAB_GREETING_STATE. Préparez-la une seule fois dans ce shell et réutilisez le même chemin entre ces chapitres. Le helper crée une CRD absente ou vérifie son UID enregistré et sa spec exacte retournée par le serveur ; il ne remplace jamais une définition existante. Sans preuve d’origine, arrêtez-vous. Après une création échouée, inspectez l’état partiel au lieu de supprimer la preuve ou d’adopter le type. Arrêtez les managers avant de changer de cours.",
+    ),
+    code(
+      "bash",
+      'if [ -z "${LAB_GREETING_STATE:-}" ]; then\n  shared_dir=$(mktemp -d) &&\n    export LAB_GREETING_STATE="$shared_dir/greeting-schema.json"\nfi\ntest -n "${LAB_GREETING_STATE:-}"',
+    ),
     h("exercise", "Register, discover and validate", "Enregistrer, découvrir et valider"),
     note(
       "warn",
@@ -112,7 +120,7 @@ export const crds: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "k apply -f lab/level-4/crds/greetings.yaml\nk wait --for=condition=Established crd/greetings.learning.k8svisual.dev --timeout=60s\nk api-resources --api-group=learning.k8svisual.dev\nk explain greeting.spec --api-version=learning.k8svisual.dev/v1alpha1\nk -n lab-crds apply -f lab/level-4/crds/hello.yaml\nk -n lab-crds get greeting hello -o yaml\nk -n lab-crds get pods",
+          code: 'python3 lab/scripts/greeting-schema.py "${LAB_GREETING_STATE:?Prepare the shared receipt first}" &&\nk wait --for=condition=Established crd/greetings.learning.k8svisual.dev --timeout=60s &&\nk api-resources --api-group=learning.k8svisual.dev &&\nk explain greeting.spec --api-version=learning.k8svisual.dev/v1alpha1 &&\nk -n lab-crds apply -f lab/level-4/crds/hello.yaml &&\nk -n lab-crds get greeting hello -o yaml &&\nk -n lab-crds get pods',
         },
         explain: l(
           "Inspect stored defaults and the new discovery entry. No Greeting controller is running in this namespace, so creation does not produce a Deployment or a Ready status. The schema alone is working as intended.",
@@ -234,17 +242,20 @@ export const crds: Chapter = {
     ),
     h(
       "cleanup",
-      "Remove instances before a shared definition",
-      "Retirer les instances avant une définition partagée",
+      "Clean up without deleting the shared definition",
+      "Nettoyer sans supprimer la définition partagée",
     ),
     code(
       "bash",
-      "k delete namespace lab-crds\nk get greetings.learning.k8svisual.dev --all-namespaces",
+      "k delete namespace lab-crds &&\nk get greetings.learning.k8svisual.dev --all-namespaces",
     ),
     p(
-      "Delete the definition below only if you installed this exact lab type and the preceding inventory contains no instances needed by another chapter. Otherwise leave the shared CRD in place. Definition deletion is destructive beyond the namespace and cannot be reversed merely by restoring its YAML.",
-      "Supprimez la définition ci-dessous seulement si vous avez installé ce type exact et si l’inventaire ne contient aucune instance utile à un autre chapitre. Sinon conservez la CRD partagée. Sa suppression dépasse le namespace et restaurer le YAML ne restaure pas ses anciennes instances.",
+      "Inspect the remaining instances returned above and leave the shared CRD in place for the other lessons. Definition deletion is destructive beyond the namespace and cannot be reversed merely by restoring its YAML.",
+      "Examinez les instances restantes et conservez la CRD partagée pour les autres cours. Sa suppression dépasse le namespace et restaurer le YAML ne restaure pas ses anciennes instances.",
     ),
-    code("bash", "k delete crd greetings.learning.k8svisual.dev"),
+    p(
+      "Keep this shared definition and its receipt for the controller lessons. There is deliberately no CRD deletion command here: removing a CRD affects every namespace and a one-time instance inventory cannot exclude concurrent creation. The final teardown is disposal of the dedicated lab cluster under lab/README.md, only after all chapters are finished.",
+      "Conservez cette définition partagée et sa preuve pour les cours contrôleurs. Aucune commande de suppression de CRD n’est proposée ici : elle affecterait tous les namespaces et un inventaire ponctuel ne peut exclure une création concurrente. Le nettoyage final consiste à retirer le cluster de lab dédié selon lab/README.md, seulement après tous les cours.",
+    ),
   ],
 };

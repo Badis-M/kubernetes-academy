@@ -1,5 +1,17 @@
 import type { Chapter } from "../types";
-import { l, h, p, code, note, list, labContext, quiz, question, challenge } from "../lesson-kit";
+import {
+  l,
+  h,
+  p,
+  code,
+  note,
+  list,
+  labContext,
+  requireOwnedNamespace,
+  quiz,
+  question,
+  challenge,
+} from "../lesson-kit";
 import data from "../../../lab/level-3/backup-dr/data.yaml?raw";
 import capture from "../../../lab/level-3/backup-dr/capture.sh?raw";
 import restore from "../../../lab/level-3/backup-dr/restore.sh?raw";
@@ -45,7 +57,7 @@ export const backupDr: Chapter = {
       "RPO is the maximum tolerable data loss expressed as time; RTO is the maximum tolerable time to restore the required service. A backup every hour does not automatically meet a one-hour RPO if jobs fail unnoticed or snapshots are inconsistent. Recovery time includes detection, access to credentials/keys, provisioning, restore, validation and traffic recovery. Set targets from business impact, then measure the full process. A tiny local file drill is useful evidence for a procedure, not proof a production database meets the same targets.",
       "RPO est la perte de données temporelle maximale tolérée ; RTO est le délai maximal toléré pour rétablir le service requis. Une sauvegarde horaire ne garantit pas un RPO d’une heure si des tâches échouent sans alerte ou produisent des snapshots incohérents. La reprise inclut détection, accès aux identifiants/clés, provisionnement, restauration, validation et retour du trafic. Définissez les objectifs selon l’impact métier puis mesurez tout le processus. Un exercice sur petit fichier local étaye une procédure, pas les mêmes objectifs pour une base de production.",
     ),
-    ...labContext("lab-backup-source"),
+    ...labContext("lab-backup-source", "LAB_BACKUP_SOURCE_UID"),
     note(
       "warn",
       l("Scope and storage prerequisites", "Portée et prérequis stockage"),
@@ -71,25 +83,28 @@ export const backupDr: Chapter = {
     ),
     code(
       "bash",
-      `umask 077\nbackup_dir=$(mktemp -d)\nbash lab/level-3/backup-dr/capture.sh "$backup_dir"\ncat "$backup_dir/captured-at.txt"\ntar -tf "$backup_dir/orders.tar"\nk -n lab-backup-source exec data -- sh -c 'printf "A003,25\\n" >> /data/orders.csv; sync'`,
+      `umask 077\n${requireOwnedNamespace("lab-backup-source", "LAB_BACKUP_SOURCE_UID")} &&\n  backup_dir=$(mktemp -d) &&\n  bash lab/level-3/backup-dr/capture.sh "$backup_dir" &&\n  cat "$backup_dir/captured-at.txt" &&\n  tar -tf "$backup_dir/orders.tar" &&\n  k -n lab-backup-source exec data -- sh -c 'printf "A003,25\\n" >> /data/orders.csv; sync'`,
     ),
     code("bash", capture, "lab/level-3/backup-dr/capture.sh"),
     p(
       "The script uses a partial filename until capture succeeds, checks the frozen source checksum, then records archive integrity. The last command adds a third order after the recovery point: recovering this backup should lose that later write intentionally. Keep backup_dir in the same shell. The private local directory is outside Git, but still shares the host's failure domain. Real backups need encrypted independent storage, retention/immutability, separate deletion permissions and tested key access. A checksum detects corruption; it is not an authenticity guarantee if an attacker can replace both archive and checksum.",
-      "Le script utilise un nom partiel jusqu’à réussite, vérifie le checksum de la source figée puis enregistre l’intégrité de l’archive. La dernière commande ajoute une troisième commande après le point de reprise : restaurer cette sauvegarde doit volontairement perdre cette écriture ultérieure. Gardez backup_dir dans le même shell. Le répertoire local privé est hors de Git mais partage encore le domaine de panne de l’hôte. De vraies sauvegardes exigent stockage indépendant chiffré, rétention/immutabilité, droits de suppression séparés et accès aux clés testé. Un checksum détecte une corruption ; il n’authentifie pas si l’attaquant peut remplacer archive et checksum.",
+      "Le script utilise un nom partiel jusqu’à réussite, vérifie le checksum de la source figée puis enregistre l’intégrité de l’archive. La dernière instruction ajoute la commande client A003 après le point de sauvegarde : restaurer cette sauvegarde doit volontairement perdre cette écriture ultérieure. Gardez backup_dir dans le même shell. Le répertoire local privé est hors de Git mais partage encore le domaine de panne de l’hôte. De vraies sauvegardes exigent stockage indépendant chiffré, rétention/immutabilité, droits de suppression séparés et accès aux clés testé. Un checksum détecte une corruption ; il n’authentifie pas si l’attaquant peut remplacer archive et checksum.",
     ),
     h("restore", "Restore into an independent target", "Restaurer dans une cible indépendante"),
     code(
       "bash",
-      'restore_started=$(date +%s)\nk create namespace lab-backup-restore\nk -n lab-backup-restore apply -f lab/level-3/backup-dr/data.yaml\nk -n lab-backup-restore wait --for=condition=Ready pod/data --timeout=120s\nbash lab/level-3/backup-dr/restore.sh "$backup_dir"\nk -n lab-backup-restore exec -i data -- sh -eu < lab/level-3/backup-dr/verify.sh\nprintf \'Restore drill duration: %s seconds\\n\' "$(($(date +%s) - restore_started))"\nk -n lab-backup-source get pvc data -o wide\nk -n lab-backup-restore get pvc data -o wide',
+      "LAB_BACKUP_RESTORE_UID=\nrestore_started=$(date +%s)\n" +
+        requireOwnedNamespace("lab-backup-source", "LAB_BACKUP_SOURCE_UID") +
+        ' &&\n  test -d "${backup_dir:-}" &&\n  LAB_BACKUP_RESTORE_UID=$(k create namespace lab-backup-restore -o jsonpath=\'{.metadata.uid}\') &&\n  test -n "$LAB_BACKUP_RESTORE_UID" &&\n  k -n lab-backup-restore apply -f lab/level-3/backup-dr/data.yaml &&\n  k -n lab-backup-restore wait --for=condition=Ready pod/data --timeout=120s &&\n  bash lab/level-3/backup-dr/restore.sh "$backup_dir" &&\n  k -n lab-backup-restore exec -i data -- sh -eu < lab/level-3/backup-dr/verify.sh &&\n  printf \'Restore drill duration: %s seconds\\n\' "$(($(date +%s) - restore_started))" &&\n  k -n lab-backup-source get pvc data -o wide &&\n  k -n lab-backup-restore get pvc data -o wide',
     ),
     code("bash", "k -n lab-backup-source exec data -- cat /data/orders.csv"),
     code("bash", restore, "lab/level-3/backup-dr/restore.sh"),
     code("bash", verify, "lab/level-3/backup-dr/verify.sh"),
     p(
       "Expected: distinct volume bindings, matching restored-file checksum, two orders totaling 30 in the target, and the original source still containing the third order. The restore script checks archive integrity before any target request and refuses an already populated target file. Functional verification is stronger than Pod Ready: it checks the application's data meaning. The measured duration covers this drill's provisioning/restore/verification interval, not detection or real traffic recovery; report that boundary instead of labeling it a complete production RTO.",
-      "Attendu : volumes liés distincts, checksum du fichier restauré identique, deux commandes totalisant 30 dans la cible et troisième commande toujours présente dans la source. Le script vérifie l’archive avant toute requête cible et refuse un fichier cible déjà présent. La vérification fonctionnelle dépasse Pod Ready : elle contrôle le sens des données. La durée mesurée couvre provisionnement/restauration/vérification de cet exercice, pas détection ni retour du vrai trafic ; indiquez cette limite au lieu d’en faire un RTO de production complet.",
+      "Attendu : volumes liés distincts, checksum du fichier restauré identique, deux commandes client totalisant 30 dans la cible et commande client A003 toujours présente dans la source. Le script vérifie l’archive avant toute requête cible et refuse un fichier cible déjà présent. La vérification fonctionnelle dépasse Pod Ready : elle contrôle le sens des données. La durée mesurée couvre provisionnement/restauration/vérification de cet exercice, pas détection ni retour du vrai trafic ; indiquez cette limite au lieu d’en faire un RTO de production complet.",
     ),
+    { type: "diagram", name: "backup-recovery-timeline" },
     h("diagnosis", "Separate recovery failures", "Séparer les échecs de reprise"),
     p(
       "A Pending PVC needs class/provisioner/topology evidence, not a retry of tar. Permission denied needs mount ownership inspection, not disabling non-root globally. A missing tar utility means the chosen transfer method is unsupported. A checksum failure stops recovery before accepting data; investigate corruption or the wrong backup point. Correct bytes with a failed business query indicate the wrong consistency point or incompatible application/schema. API-object recovery must separately account for CRDs, version compatibility, RBAC, DNS, certificates, Secrets and encryption keys. Do not dump real Secrets into Git or logs to make a manifest export look complete.",
@@ -119,7 +134,7 @@ export const backupDr: Chapter = {
       question(
         l(
           "Why should the third order be absent after this restore?",
-          "Pourquoi la troisième commande doit-elle être absente après restauration ?",
+          "Pourquoi la commande client A003 doit-elle être absente après restauration ?",
         ),
         [
           l(
@@ -194,11 +209,21 @@ export const backupDr: Chapter = {
     h("cleanup", "Delete only disposable copies", "Supprimer seulement les copies jetables"),
     code(
       "bash",
-      'k delete namespace lab-backup-source lab-backup-restore\nprintf "Backup directories to inspect and remove manually: %s %s\\n" "$backup_dir" "${corrupt_dir:-not-created}"',
+      requireOwnedNamespace("lab-backup-source", "LAB_BACKUP_SOURCE_UID") +
+        " &&\n  k delete namespace lab-backup-source",
+    ),
+    code(
+      "bash",
+      requireOwnedNamespace("lab-backup-restore", "LAB_BACKUP_RESTORE_UID") +
+        " &&\n  k delete namespace lab-backup-restore",
+    ),
+    code(
+      "bash",
+      'printf "Backup directories to inspect and remove manually: %s %s\\n" "$backup_dir" "${corrupt_dir:-not-created}"',
     ),
     p(
-      "Namespace deletion destroys these lab PVCs and, with the inspected Delete policy, their local backing data. Inspect the printed private host directories and remove them manually after acceptance; the commands do not delete an arbitrary variable-expanded path. A production recovery plan must retain its independent backup copies and the evidence of the restore test.",
-      "Supprimer les namespaces détruit les PVC du lab et, avec la politique Delete examinée, leurs données locales. Examinez les répertoires privés affichés puis supprimez-les manuellement après validation ; ces commandes n’effacent pas un chemin arbitraire construit depuis une variable. Un plan réel doit conserver ses copies indépendantes et les preuves du test de restauration.",
+      "Keep the same terminal: cleanup checks each namespace UID before deleting it. Namespace deletion destroys these lab PVCs and, with the inspected Delete policy, their local backing data. Inspect the printed private host directories and remove them manually after acceptance; the commands do not delete an arbitrary variable-expanded path. A production recovery plan must retain its independent backup copies and the evidence of the restore test.",
+      "Gardez le même terminal : le nettoyage vérifie l’UID de chaque namespace avant sa suppression. Supprimer les namespaces détruit les PVC du lab et, avec la politique Delete examinée, leurs données locales. Examinez les répertoires privés affichés puis supprimez-les manuellement après validation ; ces commandes n’effacent pas un chemin arbitraire construit depuis une variable. Un plan réel doit conserver ses copies indépendantes et les preuves du test de restauration.",
     ),
   ],
 };

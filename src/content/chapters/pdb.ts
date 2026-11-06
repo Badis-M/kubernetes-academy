@@ -85,6 +85,7 @@ export const pdb: Chapter = {
           fr: "Utiliser l’API sans drainer un nœud partagé",
         },
       },
+      { type: "diagram", name: "eviction-budget" },
       {
         type: "code",
         lang: "bash",

@@ -7,6 +7,7 @@ import {
   note,
   list,
   labContext,
+  requireOwnedNamespace,
   steps,
   quiz,
   question,
@@ -117,7 +118,7 @@ export const kustomize: Chapter = {
       "The client version reports the bundled Kustomize version, which can differ across kubectl installations. The lab baseline uses kubectl 1.35.x; record the renderer used for a review and CI. diff exit code 1 means the expected differences exist. Inspect names, namespaces, replica counts, resource requests and generated references in the YAML. No controller, cluster connection or Helm plugin is required to build these local overlays.",
       "La version client indique le Kustomize intégré, qui peut varier selon kubectl. La base du lab utilise kubectl 1.35.x ; relevez le moteur utilisé pour revue et CI. Le code 1 de diff signifie que les différences attendues existent. Inspectez noms, namespaces, réplicas, requests et références générées. Aucun contrôleur, accès cluster ou plugin Helm n’est nécessaire pour construire ces overlays locaux.",
     ),
-    ...labContext("lab-kustomize-dev"),
+    ...labContext("lab-kustomize-dev", "LAB_KUSTOMIZE_DEV_UID"),
     h("exercise", "Optional side-by-side application", "Application optionnelle côte à côte"),
     steps(
       {
@@ -127,7 +128,10 @@ export const kustomize: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "k create namespace lab-kustomize-prod\nk apply -k lab/level-3/kustomize/overlays/dev\nk apply -k lab/level-3/kustomize/overlays/prod\nk -n lab-kustomize-dev rollout status deployment/dev-web --timeout=120s\nk -n lab-kustomize-prod rollout status deployment/prod-web --timeout=120s\nk -n lab-kustomize-dev get deployment,service,configmap\nk -n lab-kustomize-prod get deployment,service,configmap",
+          code:
+            "LAB_KUSTOMIZE_PROD_UID=\n" +
+            requireOwnedNamespace("lab-kustomize-dev", "LAB_KUSTOMIZE_DEV_UID") +
+            " &&\n  LAB_KUSTOMIZE_PROD_UID=$(k create namespace lab-kustomize-prod -o jsonpath='{.metadata.uid}') &&\n  test -n \"$LAB_KUSTOMIZE_PROD_UID\" &&\n  k apply -k lab/level-3/kustomize/overlays/dev &&\n  k apply -k lab/level-3/kustomize/overlays/prod &&\n  k -n lab-kustomize-dev rollout status deployment/dev-web --timeout=120s &&\n  k -n lab-kustomize-prod rollout status deployment/prod-web --timeout=120s &&\n  k -n lab-kustomize-dev get deployment,service,configmap &&\n  k -n lab-kustomize-prod get deployment,service,configmap",
         },
         explain: l(
           "Namespace transforms assign existing resources to namespaces but do not create Namespace objects here. That is why both namespaces are explicitly created before applying.",
@@ -268,9 +272,18 @@ export const kustomize: Chapter = {
     ),
     h("cleanup", "Remove both isolated applications", "Supprimer les deux applications isolées"),
     p(
-      "Stop port-forward first. Deleting these dedicated namespaces also removes obsolete generated ConfigMaps from earlier experiments. It would be inappropriate in a namespace shared with unrelated applications. Local rendering alone creates no API resources to clean up. Inspect the printed render/preview directories, then manually remove only those copies when finished.",
-      "Arrêtez d’abord port-forward. Supprimer ces namespaces dédiés retire aussi les anciennes ConfigMaps générées. Cela serait inapproprié dans un namespace partagé avec d’autres applications. Un rendu local seul ne crée aucune ressource API à nettoyer. Examinez les répertoires render/preview affichés puis retirez manuellement ces copies uniquement lorsque vous avez terminé.",
+      "Stop port-forward first. Keep the same terminal so cleanup can verify each namespace UID. Deleting these dedicated namespaces also removes obsolete generated ConfigMaps from earlier experiments. It would be inappropriate in a namespace shared with unrelated applications. Local rendering alone creates no API resources to clean up. Inspect the printed render/preview directories, then manually remove only those copies when finished.",
+      "Arrêtez d’abord port-forward. Gardez le même terminal pour que le nettoyage puisse vérifier chaque UID de namespace. Supprimer ces namespaces dédiés retire aussi les anciennes ConfigMaps générées. Cela serait inapproprié dans un namespace partagé avec d’autres applications. Un rendu local seul ne crée aucune ressource API à nettoyer. Examinez les répertoires render/preview affichés puis retirez manuellement ces copies uniquement lorsque vous avez terminé.",
     ),
-    code("bash", "k delete namespace lab-kustomize-dev lab-kustomize-prod"),
+    code(
+      "bash",
+      requireOwnedNamespace("lab-kustomize-dev", "LAB_KUSTOMIZE_DEV_UID") +
+        " &&\n  k delete namespace lab-kustomize-dev",
+    ),
+    code(
+      "bash",
+      requireOwnedNamespace("lab-kustomize-prod", "LAB_KUSTOMIZE_PROD_UID") +
+        " &&\n  k delete namespace lab-kustomize-prod",
+    ),
   ],
 };

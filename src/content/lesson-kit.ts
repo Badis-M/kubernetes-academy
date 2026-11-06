@@ -36,15 +36,42 @@ export const challenge = (title: L, task: L, hints: L[], solution: Block[]): Blo
   solution,
 });
 
-export const labContext = (namespace: string): Block[] => [
+export const namespaceUid = (namespace: string) =>
+  `k get namespace ${namespace} -o jsonpath='{.metadata.uid}'`;
+
+export const requireOwnedNamespace = (namespace: string, variable: string) =>
+  `test -n "\${${variable}:-}" &&
+  current_namespace_uid=$(${namespaceUid(namespace)}) &&
+  test "$current_namespace_uid" = "$${variable}"`;
+
+export const requireAbsentResource = (resource: string, name: string) =>
+  `existing_resource=$(k get ${resource} ${name} --ignore-not-found -o name) &&
+  test -z "$existing_resource"`;
+
+export const requireResourceUid = (resource: string, name: string, variable: string) =>
+  `test -n "\${${variable}:-}" &&
+  current_uid=$(k get ${resource} ${name} -o jsonpath='{.metadata.uid}') &&
+  test "$current_uid" = "$${variable}"`;
+
+export const labContext = (namespace: string, uidVariable?: string): Block[] => [
   h("lab-preparation", "Prepare an isolated exercise", "Préparer un exercice isolé"),
   p(
-    "Use the disposable kind lab described in lab/README.md (Kubernetes 1.35). Run commands from the repository root. The following alias always targets its explicit context; it does not change your global kubectl context. Stop if namespace creation returns AlreadyExists or any other error. Inspect it before proceeding; a failed create never authorizes its deletion.",
-    "Utilisez le lab kind jetable décrit dans lab/README.md (Kubernetes 1.35). Exécutez les commandes depuis la racine du dépôt. L’alias suivant cible toujours son contexte explicite, sans changer votre contexte kubectl global. Arrêtez-vous si la création retourne AlreadyExists ou une autre erreur. Inspectez-le avant de poursuivre ; une création échouée n’autorise jamais sa suppression.",
+    "Use the disposable kind lab described in lab/README.md (Kubernetes 1.35). Run commands from the repository root. The following shortcut always targets its explicit context; it does not change your global kubectl context. Stop if namespace creation returns AlreadyExists or any other error. Inspect it before proceeding; a failed create never authorizes its deletion.",
+    "Utilisez le lab kind jetable décrit dans lab/README.md (Kubernetes 1.35). Exécutez les commandes depuis la racine du dépôt. Le raccourci suivant cible toujours son contexte explicite, sans changer votre contexte kubectl global. Arrêtez-vous si la création retourne AlreadyExists ou une autre erreur. Inspectez-le avant de poursuivre ; une création échouée n’autorise jamais sa suppression.",
   ),
   code(
     "bash",
-    `kubectl --context kind-k8s-ops-lab cluster-info\nalias k='kubectl --context kind-k8s-ops-lab'\nk create namespace ${namespace}\nk get nodes -o wide`,
+    'unalias k 2>/dev/null || true\nfunction k() { kubectl --context kind-k8s-ops-lab "$@"; }\nk cluster-info && k get nodes -o wide',
+  ),
+  p(
+    "Run the creation block only after the context checks succeed. Continue with the exercise only after successful namespace creation.",
+    "Lancez le bloc de création uniquement après la réussite des vérifications du contexte. Poursuivez l’exercice seulement si le namespace a bien été créé.",
+  ),
+  code(
+    "bash",
+    uidVariable
+      ? `${uidVariable}=\nk cluster-info &&\n  ${uidVariable}=$(k create namespace ${namespace} -o jsonpath='{.metadata.uid}') &&\n  test -n "$${uidVariable}"`
+      : `k cluster-info && k create namespace ${namespace}`,
   ),
   note(
     "info",

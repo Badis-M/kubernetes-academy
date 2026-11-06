@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, ChevronDown, Info, Lightbulb, Lock, Trophy, Unlock } from "lucide-react";
+import { referenceLabels } from "@/content/reference-labels";
 import type { Block, LabStep } from "@/content/types";
 import { ui, useLang } from "@/lib/i18n";
 import { CodeBlock } from "./CodeBlock";
@@ -42,16 +43,26 @@ function BlockView({ block: b }: { block: Block }) {
       const Tag = b.ordered ? "ol" : "ul";
       return (
         <Tag className={`my-5 space-y-2.5 ${b.ordered ? "counter-reset-none" : ""}`}>
-          {b.items.map((it, i) => (
-            <li key={i} className="flex gap-3 text-[15px] leading-relaxed text-foreground/85">
-              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 font-mono text-[11px] text-primary">
-                {b.ordered ? i + 1 : "•"}
-              </span>
-              <span className="min-w-0 break-words [overflow-wrap:anywhere]">
-                <RichText text={tr(it)} />
-              </span>
-            </li>
-          ))}
+          {b.items.map((it, i) => {
+            const item = tr(it);
+            const reference = referenceLabels.get(item);
+            return (
+              <li key={i} className="flex gap-3 text-[15px] leading-relaxed text-foreground/85">
+                <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 font-mono text-[11px] text-primary">
+                  {b.ordered ? i + 1 : "•"}
+                </span>
+                <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                  {reference ? (
+                    <a href={item} className="text-primary underline underline-offset-4">
+                      {tr(reference)}
+                    </a>
+                  ) : (
+                    <RichText text={item} />
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </Tag>
       );
     }
@@ -69,7 +80,15 @@ function BlockView({ block: b }: { block: Block }) {
         </>
       );
     case "callout":
-      return <Callout tone={b.tone} title={tr(b.title)} text={tr(b.text)} />;
+      return (
+        <Callout tone={b.tone} title={tr(b.title)} text={tr(b.text)}>
+          {b.link && (
+            <a className="mt-2 inline-block text-sm font-medium underline" href={b.link.href}>
+              {tr(b.link.label)}
+            </a>
+          )}
+        </Callout>
+      );
     case "diagram":
       return <Diagram name={b.name} />;
     case "steps":
@@ -82,8 +101,10 @@ function BlockView({ block: b }: { block: Block }) {
               key={i}
               className="grid gap-1 border-b border-border px-4 py-3.5 last:border-b-0 sm:grid-cols-[13rem_1fr] sm:gap-5"
             >
-              <code className="h-fit w-fit">{r.field}</code>
-              <p className="text-sm leading-relaxed text-foreground/80">
+              <code className="h-fit min-w-0 max-w-full w-fit [overflow-wrap:anywhere]">
+                {r.field}
+              </code>
+              <p className="min-w-0 text-sm leading-relaxed text-foreground/80 [overflow-wrap:anywhere]">
                 <RichText text={tr(r.text)} />
               </p>
             </div>
@@ -131,10 +152,12 @@ export function Callout({
   tone,
   title,
   text,
+  children,
 }: {
   tone: "info" | "warn" | "tip";
   title: string;
   text: string;
+  children?: React.ReactNode;
 }) {
   const map = {
     info: { Icon: Info, cls: "border-worker/30 bg-worker-soft text-worker" },
@@ -149,6 +172,7 @@ export function Callout({
         <p className="mt-1 !text-sm !leading-relaxed text-foreground/80">
           <RichText text={text} />
         </p>
+        {children}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { foundationLab } from "../foundation-lab";
-import { h, code } from "../lesson-kit";
+import { h, code, p, requireOwnedNamespace } from "../lesson-kit";
 import type { Chapter } from "../types";
 
 export const deployments: Chapter = {
@@ -48,8 +48,8 @@ export const deployments: Chapter = {
         {
           field: "spec.selector.matchLabels",
           text: {
-            en: "Which Pods this Deployment owns. Must match `template.metadata.labels`, and is immutable after creation.",
-            fr: "Les Pods possédés par ce Deployment. Doit correspondre à `template.metadata.labels`, et n'est plus modifiable après création.",
+            en: "Selects matching Pods by label. Actual ownership follows ownerReferences: Deployment → ReplicaSet → Pod. The selector must match `template.metadata.labels`, and is immutable after creation.",
+            fr: "Sélectionne les Pods par leurs labels. La propriété effective se lit dans ownerReferences : Deployment → ReplicaSet → Pod. Le sélecteur doit correspondre à `template.metadata.labels`, et n'est plus modifiable après création.",
           },
         },
         {
@@ -98,7 +98,7 @@ export const deployments: Chapter = {
         fr: "Si `selector.matchLabels` ne correspond pas aux labels du template, l'API server rejette le Deployment : `selector does not match template labels`. Gardez un label (comme `app: web`) cohérent aux deux endroits.",
       },
     },
-    ...foundationLab("lab-deployments"),
+    ...foundationLab("lab-deployments", "LAB_DEPLOYMENTS_NS_UID"),
     {
       type: "h2",
       id: "lab",
@@ -207,7 +207,25 @@ export const deployments: Chapter = {
         {
           type: "code",
           lang: "bash",
-          code: "k set image deployment/web web=nginx:9.99-broken\nk rollout status deployment/web --timeout=30s\nk get rs -l app=web        # new RS: 1 desired, 0 ready; old RS: all ready\nk get pods -l app=web      # one Pod in ImagePullBackOff\nk rollout undo deployment/web\nk rollout status deployment/web --timeout=180s\nk delete deployment web",
+          code: "LAB_DEPLOYMENTS_CLEANUP_UID=\nLAB_RECOVERED_DEPLOYMENT_UID=\nk set image deployment/web web=nginx:9.99-broken &&\n  k rollout status deployment/web --timeout=30s",
+        },
+        {
+          type: "p",
+          text: {
+            en: "A timeout is expected here. Diagnose the failed image pull before rolling back. Continue to cleanup only after the recovery check succeeds.",
+            fr: "Un timeout est attendu ici. Diagnostiquez l’échec de téléchargement avant le rollback. Passez au nettoyage seulement après une vérification de reprise réussie.",
+          },
+        },
+        { type: "code", lang: "bash", code: "k get rs -l app=web && k get pods -l app=web" },
+        {
+          type: "code",
+          lang: "bash",
+          code: "LAB_RECOVERED_DEPLOYMENT_UID=\nk rollout undo deployment/web &&\n  k rollout status deployment/web --timeout=180s &&\n  LAB_RECOVERED_DEPLOYMENT_UID=$(k get deployment web -o jsonpath='{.metadata.uid}') &&\n  test -n \"$LAB_RECOVERED_DEPLOYMENT_UID\"",
+        },
+        {
+          type: "code",
+          lang: "bash",
+          code: 'test -n "${LAB_RECOVERED_DEPLOYMENT_UID:-}" &&\n  current_uid=$(k get deployment web -o jsonpath=\'{.metadata.uid}\') &&\n  test "$current_uid" = "$LAB_RECOVERED_DEPLOYMENT_UID" &&\n  k rollout status deployment/web --timeout=180s &&\n  k delete deployment web &&\n  LAB_DEPLOYMENTS_CLEANUP_UID="$LAB_DEPLOYMENTS_NS_UID"',
         },
         {
           type: "p",
@@ -219,6 +237,17 @@ export const deployments: Chapter = {
       ],
     },
     h("cleanup", "Finish this isolated exercise", "Terminer cet exercice isolé"),
-    code("bash", "k delete namespace lab-deployments"),
+    p(
+      "Complete the recovery and guarded Deployment deletion above before this final cleanup. Its receipt is tied to the namespace created in this shell. A failed recovery must not be bypassed by deleting the namespace; inspect and recover first. Keep this exercise exclusive to one operator.",
+      "Terminez la reprise et la suppression gardée du Deployment ci-dessus avant ce nettoyage final. La preuve est liée au namespace créé dans ce shell. Une reprise échouée ne doit pas être contournée en supprimant le namespace ; diagnostiquez et rétablissez d’abord. Réservez cet exercice à un seul opérateur.",
+    ),
+    code(
+      "bash",
+      `${requireOwnedNamespace("lab-deployments", "LAB_DEPLOYMENTS_NS_UID")} &&
+  test "\${LAB_DEPLOYMENTS_CLEANUP_UID:-}" = "$LAB_DEPLOYMENTS_NS_UID" &&
+  remaining_deployment=$(k get deployment web --ignore-not-found -o name) &&
+  test -z "$remaining_deployment" &&
+  k delete namespace lab-deployments --wait=true --timeout=120s`,
+    ),
   ],
 };

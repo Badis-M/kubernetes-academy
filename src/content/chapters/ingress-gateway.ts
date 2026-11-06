@@ -7,12 +7,16 @@ import {
   note,
   list,
   labContext,
+  requireResourceUid,
+  requireAbsentResource,
   steps,
   quiz,
   question,
   challenge,
 } from "../lesson-kit";
 import routing from "../../../lab/level-2/ingress-gateway/routing.yaml?raw";
+
+import gatewayClass from "../../../lab/level-2/ingress-gateway/gateway-class.yaml?raw";
 
 export const ingressGateway: Chapter = {
   id: "ingress-gateway",
@@ -49,7 +53,8 @@ export const ingressGateway: Chapter = {
       "Gateway API separates responsibilities: GatewayClass chooses a controller, Gateway defines listeners and attachment policy, and HTTPRoute matches traffic and references backend Services. The operator owns infrastructure while application teams can own Routes. A Route must request a parent that allows attachment; cross-namespace backend references also require permission such as ReferenceGrant. These CRDs are not built into the Kubernetes API server, and installing them without an implementation provides no traffic handling.",
       "Gateway API sépare les responsabilités : GatewayClass choisit un contrôleur, Gateway définit listeners et autorisations d’attachement, HTTPRoute sélectionne le trafic et référence des Services backend. L’opérateur possède l’infrastructure tandis que les équipes applicatives peuvent gérer les Routes. Une Route doit demander un parent qui l’autorise ; les références backend entre namespaces exigent aussi une permission telle que ReferenceGrant. Ces CRD ne sont pas intégrées à l’API server, et les installer sans implémentation ne traite aucun trafic.",
     ),
-    ...labContext("lab-gateway"),
+    { type: "diagram", name: "gateway-routing" },
+    ...labContext("lab-gateway", "LAB_GATEWAY_NS_UID"),
     h(
       "controller",
       "Opt into a pinned local implementation",
@@ -73,7 +78,26 @@ export const ingressGateway: Chapter = {
     ),
     code(
       "bash",
-      "helm --kube-context kind-k8s-ops-lab install lab-eg oci://docker.io/envoyproxy/gateway-helm --version v1.9.2 --namespace envoy-gateway-system --create-namespace --wait --timeout 5m\nk -n envoy-gateway-system wait --for=condition=Available deployment/envoy-gateway --timeout=300s\nk get crd gateways.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io",
+      `LAB_ENVOY_NS_UID=
+LAB_ENVOY_RELEASE_UID=
+test "\${HELM_DRIVER:-secret}" = secret &&
+  ${requireAbsentResource("crd", "gatewayclasses.gateway.networking.k8s.io gateways.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io")} &&
+  LAB_ENVOY_NS_UID=$(k create namespace envoy-gateway-system -o jsonpath='{.metadata.uid}') &&
+  test -n "$LAB_ENVOY_NS_UID" &&
+  helm --kube-context kind-k8s-ops-lab install lab-eg oci://docker.io/envoyproxy/gateway-helm --version v1.9.2 --namespace envoy-gateway-system --wait --timeout 5m &&
+  LAB_ENVOY_RELEASE_UID=$(k -n envoy-gateway-system get secret sh.helm.release.v1.lab-eg.v1 -o jsonpath='{.metadata.uid}') &&
+  test -n "$LAB_ENVOY_RELEASE_UID" &&
+  k -n envoy-gateway-system wait --for=condition=Available deployment/envoy-gateway --timeout=300s`,
+    ),
+    p(
+      "Keep these UIDs in this shell. This exercise uses Helm's default Secret storage and does not upgrade the release. If installation fails, stop and inspect its partial resources; the automatic cleanup below requires a successfully recorded release UID. Do not retry by adopting an existing namespace or release. Reserve both namespaces and the release exclusively for this exercise.",
+      "Conservez ces UID dans ce shell. L’exercice utilise le stockage Secret par défaut de Helm et ne met pas la release à niveau. Si l’installation échoue, arrêtez-vous et examinez les ressources partielles ; le nettoyage ci-dessous exige l’UID enregistré d’une release installée avec succès. Ne réessayez pas en adoptant un namespace ou une release existante. Réservez ces deux namespaces et la release exclusivement à cet exercice.",
+    ),
+    code("yaml", gatewayClass, "lab/level-2/ingress-gateway/gateway-class.yaml"),
+    code(
+      "bash",
+      `LAB_GATEWAY_CLASS_UID=$(k create -f lab/level-2/ingress-gateway/gateway-class.yaml -o jsonpath='{.metadata.uid}') &&
+  test -n "$LAB_GATEWAY_CLASS_UID"`,
     ),
     h(
       "manifest",
@@ -93,7 +117,7 @@ export const ingressGateway: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "k -n lab-gateway apply -f lab/level-2/ingress-gateway/routing.yaml\nk -n lab-gateway rollout status deployment/web --timeout=120s\nk get gatewayclass lab-envoy -o yaml\nk -n lab-gateway get gateway public -o yaml\nk -n lab-gateway get httproute web -o yaml\nk -n envoy-gateway-system get deployments,services,pods",
+          code: "k -n lab-gateway apply -f lab/level-2/ingress-gateway/routing.yaml &&\nk -n lab-gateway rollout status deployment/web --timeout=120s\nk get gatewayclass lab-envoy -o yaml\nk -n lab-gateway get gateway public -o yaml\nk -n lab-gateway get httproute web -o yaml\nk -n envoy-gateway-system get deployments,services,pods",
         },
         explain: l(
           "Inspect observedGeneration as well as condition values. GatewayClass Accepted means the controller accepts the class. Route status.parents conditions Accepted and ResolvedRefs describe attachment and references; they do not prove backend application health. Gateway Programmed reports configuration progress, not an end-to-end HTTP test.",
@@ -110,7 +134,7 @@ export const ingressGateway: Chapter = {
         title: l("Send traffic through Envoy", "Envoyer le trafic via Envoy"),
         code: {
           lang: "bash",
-          code: "k -n envoy-gateway-system wait --for=condition=Available deployment -l gateway.envoyproxy.io/owning-gateway-namespace=lab-gateway,gateway.envoyproxy.io/owning-gateway-name=public --timeout=300s\nLAB_ENVOY_SERVICE=$(kubectl --context kind-k8s-ops-lab -n envoy-gateway-system get services -l gateway.envoyproxy.io/owning-gateway-namespace=lab-gateway,gateway.envoyproxy.io/owning-gateway-name=public -o jsonpath='{.items[0].metadata.name}')\nk -n envoy-gateway-system port-forward service/\"$LAB_ENVOY_SERVICE\" 8888:80",
+          code: 'k -n envoy-gateway-system wait --for=condition=Available deployment -l gateway.envoyproxy.io/owning-gateway-namespace=lab-gateway,gateway.envoyproxy.io/owning-gateway-name=public --timeout=300s &&\nLAB_ENVOY_SERVICE=$(kubectl --context kind-k8s-ops-lab -n envoy-gateway-system get services -l gateway.envoyproxy.io/owning-gateway-namespace=lab-gateway,gateway.envoyproxy.io/owning-gateway-name=public -o jsonpath=\'{.items[0].metadata.name}\') &&\ntest -n "$LAB_ENVOY_SERVICE" &&\nk -n envoy-gateway-system port-forward service/"$LAB_ENVOY_SERVICE" 8888:80',
         },
         explain: l(
           "Keep this terminal running. The selected Service belongs to the proxy, not the controller or application. Port-forward avoids needing a LoadBalancer implementation while still exercising HTTP routing. In a second terminal run the curl commands below.",
@@ -226,12 +250,22 @@ export const ingressGateway: Chapter = {
     ),
     h("cleanup", "Remove the route before its controller", "Retirer la route avant son contrôleur"),
     p(
-      "Stop port-forward with Ctrl+C. Delete the exercise while the controller can process finalizers, then uninstall only the release created here. Helm may retain CRDs: inspect them and leave shared definitions intact. Completely discarding the dedicated disposable cluster, following lab/README.md, is the full cleanup for retained cluster-scoped definitions.",
-      "Arrêtez le port-forward avec Ctrl+C. Supprimez l’exercice pendant que le contrôleur peut traiter les finalizers, puis désinstallez seulement la release créée ici. Helm peut conserver des CRD : examinez-les et préservez les définitions partagées. Supprimer entièrement le cluster dédié jetable selon lab/README.md assure le nettoyage complet des définitions à portée cluster restantes.",
+      "Stop port-forward with Ctrl+C. Delete the exercise while the controller can process finalizers, then uninstall only the release created here. Every failed check or deletion stops this sequence; after partial cleanup, inspect the remaining resources instead of rerunning it blindly. UID checks detect replacement before a command, but are not atomic locks across Helm and namespace deletion. Helm may retain CRDs: inspect them and leave shared definitions intact. Completely discarding the dedicated disposable cluster, following lab/README.md, is the full cleanup for retained cluster-scoped definitions.",
+      "Arrêtez le port-forward avec Ctrl+C. Supprimez l’exercice pendant que le contrôleur peut traiter les finalizers, puis désinstallez seulement la release créée ici. Tout contrôle ou retrait échoué arrête cette séquence ; après un nettoyage partiel, examinez les ressources restantes au lieu de la relancer aveuglément. Les contrôles d’UID détectent un remplacement avant la commande, sans verrou atomique entre Helm et suppression du namespace. Helm peut conserver des CRD : examinez-les et préservez les définitions partagées. Supprimer entièrement le cluster dédié jetable selon lab/README.md assure le nettoyage complet des définitions à portée cluster restantes.",
     ),
     code(
       "bash",
-      "k -n lab-gateway delete -f lab/level-2/ingress-gateway/routing.yaml\nk delete namespace lab-gateway\nhelm --kube-context kind-k8s-ops-lab uninstall lab-eg --namespace envoy-gateway-system\nk delete namespace envoy-gateway-system\nk get crd",
+      `${requireResourceUid("namespace", "lab-gateway", "LAB_GATEWAY_NS_UID")} &&
+  ${requireResourceUid("namespace", "envoy-gateway-system", "LAB_ENVOY_NS_UID")} &&
+  ${requireResourceUid("gatewayclass", "lab-envoy", "LAB_GATEWAY_CLASS_UID")} &&
+  ${requireResourceUid("-n envoy-gateway-system secret", "sh.helm.release.v1.lab-eg.v1", "LAB_ENVOY_RELEASE_UID")} &&
+  k -n lab-gateway delete -f lab/level-2/ingress-gateway/routing.yaml --wait=true --timeout=120s &&
+  k delete gatewayclass lab-envoy --wait=true --timeout=120s &&
+  k delete namespace lab-gateway --wait=true --timeout=120s &&
+  helm --kube-context kind-k8s-ops-lab uninstall lab-eg --namespace envoy-gateway-system --wait --timeout 5m &&
+  ${requireResourceUid("namespace", "envoy-gateway-system", "LAB_ENVOY_NS_UID")} &&
+  k delete namespace envoy-gateway-system --wait=true --timeout=120s &&
+  k get crd`,
     ),
   ],
 };

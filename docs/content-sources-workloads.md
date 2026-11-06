@@ -14,3 +14,8 @@ Consulted on **2026-10-22**. The teaching baseline is Kubernetes **1.35.0**, kin
 The lessons and their YAML fixtures were written and reviewed against these primary references. Local TypeScript/format/lint checks, offline YAML parsing and shell syntax checks can validate application integration and document structure; they do not prove Kubernetes accepted the resources or that the exercises completed. No cluster, node label, taint, PVC, PV, workload, port-forward or third-party service was operated as part of authoring these chapters. Expected observations remain learner instructions until independently executed on a disposable cluster.
 
 The storage provider's effective version and configuration must be inspected on the learner's cluster. These chapters do not silently install or upgrade it. The browser/application has no access to the learner's Kubernetes context or filesystem.
+
+
+## Init and sidecar timeline follow-up — 2026-11-06
+
+The versioned Kubernetes 1.35 init and sidecar references above were rechecked for the interactive timeline: successful regular-init completion, native-sidecar startupProbe gating, restart policies, application-first shutdown, reverse sidecar order and the shared termination grace budget. Five bilingual scenarios use the unchanged lab manifest plus explicitly identified failure/two-sidecar variants. Application and browser evidence is recorded in [the review journal](manual-review-log.md#timeline-init-containers-et-sidecars--2026-11-06); no real Kubernetes execution is claimed.

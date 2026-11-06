@@ -37,12 +37,12 @@ test("analytics loads once across shared-layout navigation and language changes"
     token: "5b83c8beea424e25b3810d5d866a6752",
   });
   await page.getByRole("link", { name: "Courses", exact: true }).click();
-  await expect(page).toHaveURL("/academy");
+  await expect(page).toHaveURL(/\/academy\?lang=en$/);
   for (const language of ["fr", "en"]) {
     await page.getByRole("button", { name: language, exact: true }).click();
     await expect(
       page.getByRole("link", { name: language === "fr" ? "Cours" : "Courses", exact: true }),
-    ).toHaveAttribute("href", "/academy");
+    ).toHaveAttribute("href", `/academy?lang=${language}`);
     await expect(beacon).toHaveCount(1);
   }
   expect(scriptRequests).toHaveLength(1);
@@ -107,8 +107,8 @@ test("hydration, bilingual navigation and literal templates work under CSP", asy
   await expect(
     page.getByText("Comprenez Kubernetes en le voyant fonctionner.", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "next step", exact: true }).click();
-  await page.getByRole("button", { name: "reset", exact: true }).click();
+  await page.getByRole("button", { name: "Étape suivante", exact: true }).click();
+  await page.getByRole("button", { name: "Réinitialiser", exact: true }).click();
   await page.goto("/learn/helm-charts");
   const helpers = page.locator("pre").filter({ hasText: '{{- define "academy-web.fullname"' });
   await expect(helpers).toHaveCount(1);
@@ -212,22 +212,22 @@ test("optional preparation preserves curriculum, navigation and saved progress",
     expect(words).toBeLessThanOrEqual(300);
     await expect(preparation.locator('a[href="https://academy.badismerakchi.com/"]')).toBeVisible();
     await preparation.locator('a[href="#level-1"]').click();
-    await expect(page).toHaveURL("/academy#level-1");
+    await expect(page).toHaveURL(new RegExp(`/academy\\?lang=${language}#level-1$`));
     await expect(page.locator("#level-1 h2")).toBeInViewport();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
   }
 
-  await preparation.locator('a[href="/prerequisites"]').click();
-  await expect(page).toHaveURL("/learn/setup-kind");
+  await preparation.locator('a[href^="/prerequisites"]').click();
+  await expect(page).toHaveURL(/\/learn\/setup-kind(?:\?lang=en)?$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Install kubectl and create a kind cluster",
   );
   await page.goBack();
   await expect(preparation).toBeAttached();
-  await preparation.locator('a[href="/learn/setup-kind"]').click();
-  await expect(page).toHaveURL("/learn/setup-kind");
+  await preparation.locator('a[href^="/learn/setup-kind"]').click();
+  await expect(page).toHaveURL(/\/learn\/setup-kind(?:\?lang=en)?$/);
   expect(await page.evaluate(() => localStorage.getItem("k8slab.progress.v1"))).toBe('["pods"]');
   expect(errors).toEqual([]);
 });
@@ -275,7 +275,7 @@ test("curriculum scroll progress follows the viewport without changing course co
     true,
   );
   expect(await page.evaluate(() => localStorage.getItem("k8slab.progress.v1"))).toBeNull();
-  await page.locator('header a[href="/lab"]').click();
+  await page.locator('header a[href^="/lab"]').click();
   await expect(page.getByRole("progressbar")).toHaveCount(0);
   expect(errors).toEqual([]);
 });

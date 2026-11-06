@@ -7,15 +7,17 @@ import { Blocks, Callout } from "@/components/academy/Blocks";
 import { LevelBadge } from "@/components/academy/LevelBadge";
 
 export const Route = createFileRoute("/learn/$chapterId")({
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
   loader: ({ params }) => {
     const c = getChapter(params.chapterId);
     if (!c) throw notFound();
     return { id: c.id };
   },
-  head: ({ params }) => {
+  head: ({ params, match }) => {
     const c = getChapter(params.chapterId);
-    const title = c ? `${c.title.en} — Kubernetes Academy` : "Chapter — Kubernetes Academy";
-    const desc = c?.summary.en || "A Kubernetes chapter in the Kubernetes Academy academy.";
+    const language = match.search.lang ?? "en";
+    const title = c ? `${c.title[language]} — Kubernetes Academy` : "Chapter — Kubernetes Academy";
+    const desc = c?.summary[language] || "A Kubernetes chapter in the Kubernetes Academy academy.";
     return {
       meta: [
         { title },
@@ -33,7 +35,7 @@ export const Route = createFileRoute("/learn/$chapterId")({
 function Reader() {
   const { id } = Route.useLoaderData();
   const chapter = getChapter(id);
-  const { tr } = useLang();
+  const { lang, tr } = useLang();
   const { isDone, toggle, done } = useProgress();
   if (!chapter) throw notFound();
   const avail = isAvailable(chapter);
@@ -106,7 +108,7 @@ function Reader() {
             {chapter.minutes} {tr(ui.minutes)}
           </span>
         </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-[2.6rem] sm:leading-[1.1]">
+        <h1 className="mt-4 [overflow-wrap:anywhere] text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-[2.6rem] sm:leading-[1.1]">
           {tr(chapter.title)}
         </h1>
         {avail && (

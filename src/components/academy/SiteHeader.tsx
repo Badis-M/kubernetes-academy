@@ -24,7 +24,7 @@ export function SiteHeader() {
         </div>
         <nav
           className="flex w-full flex-wrap items-center justify-between gap-1 text-sm sm:w-auto sm:justify-start"
-          aria-label="Main"
+          aria-label={lang === "fr" ? "Navigation principale" : "Main navigation"}
         >
           {links.map((l) => (
             <Link
@@ -39,7 +39,7 @@ export function SiteHeader() {
           <div
             className="ml-2 flex rounded-lg border border-border p-0.5 font-mono text-[11px]"
             role="group"
-            aria-label="Language"
+            aria-label={lang === "fr" ? "Langue" : "Language"}
           >
             {(["fr", "en"] as const).map((l) => (
               <button

@@ -41,8 +41,8 @@ export const whyKubernetes: Chapter = {
     {
       type: "p",
       text: {
-        en: "Before orchestration, we need a unit of packaging. A virtual machine (VM) emulates a full computer: a hypervisor shares physical hardware between several VMs, and each VM boots its own complete operating system kernel. That gives strong isolation, but each VM costs hundreds of megabytes of RAM and takes tens of seconds to boot.",
-        fr: "Avant l'orchestration, il faut une unité de packaging. Une machine virtuelle (VM) émule un ordinateur complet : un hyperviseur partage le matériel entre plusieurs VM, et chaque VM démarre son propre noyau de système d'exploitation. L'isolation est forte, mais chaque VM consomme des centaines de mégaoctets de RAM et met des dizaines de secondes à démarrer.",
+        en: "Before orchestration, we need a unit of packaging. A virtual machine (VM) emulates a full computer: a hypervisor shares physical hardware between several VMs, and each VM boots its own complete operating system kernel. That gives strong isolation, but a conventional VM with a full OS generally needs more memory and startup work than a container; the exact cost depends on the guest system and its configuration.",
+        fr: "Avant l'orchestration, il faut une unité de packaging. Une machine virtuelle (VM) émule un ordinateur complet : un hyperviseur partage le matériel entre plusieurs VM, et chaque VM démarre son propre noyau de système d'exploitation. L'isolation est forte, mais une VM classique avec OS complet demande généralement plus de mémoire et de travail au démarrage qu’un conteneur ; le coût exact dépend du système invité et de sa configuration.",
       },
     },
     {
@@ -56,7 +56,7 @@ export const whyKubernetes: Chapter = {
     {
       type: "table",
       head: [
-        { en: "", fr: "" },
+        { en: "Property", fr: "Propriété" },
         { en: "Virtual machine", fr: "Machine virtuelle" },
         { en: "Container", fr: "Conteneur" },
       ],
@@ -70,7 +70,7 @@ export const whyKubernetes: Chapter = {
           },
         ],
         [
-          { en: "Startup", fr: "Démarrage" },
+          { en: "Typical startup (varies)", fr: "Démarrage typique (variable)" },
           { en: "Seconds to minutes", fr: "Secondes à minutes" },
           { en: "Milliseconds to seconds", fr: "Millisecondes à secondes" },
         ],
@@ -181,8 +181,8 @@ export const whyKubernetes: Chapter = {
     {
       type: "p",
       text: {
-        en: "This exercise only needs Docker. It demonstrates, on your own machine, the behaviours an orchestrator automates. If Docker is not installed yet, follow the setup chapter first and come back. Confirm that container names web and web-8084 through web-8086 are unused, and local ports are free. Never remove an existing personal container to run this exercise.",
-        fr: "Cet exercice ne nécessite que Docker. Il montre, sur votre machine, les comportements qu'un orchestrateur automatise. Si Docker n’est pas installé, suivez le chapitre d’installation puis revenez. Confirmez que les noms web et web-8084 à web-8086 sont libres, ainsi que les ports locaux. Ne supprimez jamais un conteneur personnel pour poursuivre.",
+        en: "This exercise only needs Docker. It demonstrates, on your own machine, the behaviours an orchestrator automates. If Docker is not installed yet, follow the setup chapter first and come back. Keep the same terminal so the lab can retain the ID of each container it starts. Confirm that container names web and web-8084 through web-8086 are unused, and local ports are free. Never remove an existing personal container to run this exercise.",
+        fr: "Cet exercice ne nécessite que Docker. Il montre, sur votre machine, les comportements qu'un orchestrateur automatise. Si Docker n’est pas installé, suivez le chapitre d’installation puis revenez. Gardez le même terminal pour conserver l’identifiant de chaque conteneur lancé par le lab. Confirmez que les noms web et web-8084 à web-8086 sont libres, ainsi que les ports locaux. Ne supprimez jamais un conteneur personnel pour poursuivre.",
       },
     },
     {
@@ -192,7 +192,7 @@ export const whyKubernetes: Chapter = {
           title: { en: "Run a container", fr: "Lancer un conteneur" },
           code: {
             lang: "bash",
-            code: "docker run -d --name web -p 127.0.0.1:8083:80 nginx:1.27\ncurl --silent --show-error --fail --retry 5 --retry-connrefused --retry-delay 1 --max-time 3 http://127.0.0.1:8083/ | head -n 4",
+            code: 'LAB_INTRO_CONTAINER_ID=\nLAB_INTRO_CONTAINER_ID=$(docker run -d --name web -p 127.0.0.1:8083:80 nginx:1.27) &&\n  test -n "$LAB_INTRO_CONTAINER_ID" &&\n  response=$(curl --silent --show-error --fail --retry 5 --retry-connrefused --retry-delay 1 --max-time 3 http://127.0.0.1:8083/) &&\n  printf \'%s\\n\' "$response" | head -n 4',
           },
           explain: {
             en: "`-d` runs the container in the background, `--name web` gives it a stable name, and `-p 127.0.0.1:8083:80` publishes container port 80 on loopback host port 8083. curl retries connection refusal within a bounded budget because starting the container does not mean nginx is already listening.",
@@ -210,7 +210,7 @@ export const whyKubernetes: Chapter = {
           title: { en: "Simulate a crash", fr: "Simuler un crash" },
           code: {
             lang: "bash",
-            code: 'docker kill web\ndocker ps --filter name=web\ncurl -s localhost:8083 || echo "service is down"',
+            code: 'test -n "${LAB_INTRO_CONTAINER_ID:-}" &&\n  docker kill "$LAB_INTRO_CONTAINER_ID" &&\n  docker ps --filter "id=$LAB_INTRO_CONTAINER_ID" &&\n  if ! curl --fail --silent --max-time 3 http://127.0.0.1:8083/; then\n    printf \'service is down\\n\'\n  fi',
           },
           explain: {
             en: "`docker kill` sends SIGKILL to the main process, just like an out-of-memory kill would. Nothing restarts it: the container is stopped and the service is down until a human acts.",
@@ -230,7 +230,7 @@ export const whyKubernetes: Chapter = {
           },
           code: {
             lang: "bash",
-            code: "docker rm web\ndocker run -d --name web --restart=always -p 127.0.0.1:8083:80 nginx:1.27\nsleep 10  # let Docker consider the container successfully started\ndocker exec web sh -c 'kill 1'\nsleep 2 && docker ps --filter name=web",
+            code: 'test -n "${LAB_INTRO_CONTAINER_ID:-}" &&\n  docker rm "$LAB_INTRO_CONTAINER_ID" &&\n  LAB_INTRO_CONTAINER_ID= &&\n  LAB_INTRO_CONTAINER_ID=$(docker run -d --name web --restart=always -p 127.0.0.1:8083:80 nginx:1.27) &&\n  test -n "$LAB_INTRO_CONTAINER_ID" &&\n  sleep 10 &&\n  docker exec "$LAB_INTRO_CONTAINER_ID" sh -c \'kill 1\' &&\n  sleep 2 &&\n  docker ps --filter "id=$LAB_INTRO_CONTAINER_ID"',
           },
           explain: {
             en: "With `--restart=always` the Docker daemon restarts the container when its process exits. That is a tiny piece of self-healing — but it only works on this one host, does not run several copies, does not balance traffic and cannot move the container if the machine dies. Kubernetes generalises this idea to a whole cluster.",
@@ -243,13 +243,16 @@ export const whyKubernetes: Chapter = {
             },
           },
           mistake: {
-            en: "Thinking `docker kill web` will trigger the restart policy: Docker deliberately does not restart a container you stopped manually. Killing the process from inside (`kill 1`) simulates a real crash.",
-            fr: "Croire que `docker kill web` déclenchera la politique de redémarrage : Docker ne relance volontairement pas un conteneur arrêté manuellement. Tuer le processus depuis l'intérieur (`kill 1`) simule un vrai crash.",
+            en: "Thinking `docker kill` will trigger the restart policy: Docker deliberately does not restart a container you stopped manually. Sending SIGTERM from inside (`kill 1`) stops nginx without a Docker stop request; it demonstrates a process exit, not an ungraceful crash.",
+            fr: "Croire que `docker kill` déclenchera la politique de redémarrage : Docker ne relance volontairement pas un conteneur arrêté manuellement. Envoyer SIGTERM depuis l’intérieur (`kill 1`) arrête nginx sans demande d’arrêt Docker ; cela illustre une sortie de processus, pas un crash brutal.",
           },
         },
         {
           title: { en: "Clean up", fr: "Nettoyer" },
-          code: { lang: "bash", code: "docker rm -f web" },
+          code: {
+            lang: "bash",
+            code: 'test -n "${LAB_INTRO_CONTAINER_ID:-}" && docker rm -f "$LAB_INTRO_CONTAINER_ID"',
+          },
           explain: {
             en: "`-f` stops and removes the container in one command.",
             fr: "`-f` arrête et supprime le conteneur en une commande.",
@@ -269,8 +272,8 @@ export const whyKubernetes: Chapter = {
       },
       hints: [
         {
-          en: "A shell loop over `8084 8085 8086` saves typing.",
-          fr: "Une boucle shell sur `8084 8085 8086` évite de tout taper.",
+          en: "Keep the IDs of the containers you start on ports `8084 8085 8086`.",
+          fr: "Gardez les identifiants des conteneurs démarrés sur les ports `8084 8085 8086`.",
         },
         {
           en: "Ask yourself: who notices a failure? who decides where the replacement runs? how do clients find the new copy?",
@@ -281,7 +284,19 @@ export const whyKubernetes: Chapter = {
         {
           type: "code",
           lang: "bash",
-          code: "for p in 8084 8085 8086; do\n  docker run -d --name web-$p -p 127.0.0.1:$p:80 nginx:1.27\ndone\ndocker ps --filter name=web-\n\n# cleanup\ndocker rm -f web-8084 web-8085 web-8086",
+          code: "LAB_WEB_8084=\nLAB_WEB_8085=\nLAB_WEB_8086=\nLAB_WEB_8084=$(docker run -d --name web-8084 -p 127.0.0.1:8084:80 nginx:1.27) &&\n  LAB_WEB_8085=$(docker run -d --name web-8085 -p 127.0.0.1:8085:80 nginx:1.27) &&\n  LAB_WEB_8086=$(docker run -d --name web-8086 -p 127.0.0.1:8086:80 nginx:1.27) &&\n  docker ps --filter name=web-",
+        },
+        {
+          type: "p",
+          text: {
+            en: "If a container cannot start, stop and inspect the error. In the same terminal, clean up only the container IDs returned by successful runs.",
+            fr: "Si un conteneur ne démarre pas, arrêtez-vous et examinez l’erreur. Dans le même terminal, nettoyez uniquement les conteneurs dont la création a renvoyé un identifiant.",
+          },
+        },
+        {
+          type: "code",
+          lang: "bash",
+          code: '(\n  for container_id in "${LAB_WEB_8084:-}" "${LAB_WEB_8085:-}" "${LAB_WEB_8086:-}"; do\n    if [ -n "$container_id" ]; then\n      docker rm -f "$container_id" || exit 1\n    fi\n  done\n)',
         },
         {
           type: "p",

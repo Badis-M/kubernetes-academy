@@ -2,6 +2,11 @@ import type { Chapter } from "../types";
 import { l, h, p, code, note, list, quiz, question, challenge } from "../lesson-kit";
 import web from "../../../lab/level-4/multi-cluster/web.yaml?raw";
 
+const requireFleetAcceptance =
+  'require_fleet_uid ka "${LAB_FLEET_A_UID:-}" &&\n  ka -n lab-fleet rollout status deployment/web --timeout=120s &&\n  ready_endpoints=$(ka -n lab-fleet get endpointslices -l kubernetes.io/service-name=web -o jsonpath=\'{range .items[*].endpoints[*]}{.conditions.ready}{"\\n"}{end}\') &&\n  printf \'%s\\n\' "$ready_endpoints" | grep -Fx true';
+const requireFleetPromotion =
+  requireFleetAcceptance + ' &&\n  require_fleet_uid kb "${LAB_FLEET_B_UID:-}"';
+
 export const multiCluster: Chapter = {
   id: "multi-cluster",
   level: 4,
@@ -42,6 +47,7 @@ export const multiCluster: Chapter = {
       "A kubeconfig maps context names to a cluster, user and optional namespace. Names are local aliases, not proof of the remote target. Explicit --kubeconfig and --context avoid reliance on a mutable current-context or merged KUBECONFIG precedence. A kubeconfig may contain administrator credentials or executable credential plugins: accept only trusted files and never print --raw output into logs. In production prefer separate scoped credentials, not a universally privileged fleet identity.",
       "Un kubeconfig relie un nom de contexte à un cluster, un utilisateur et éventuellement un namespace. Les noms sont des alias locaux, pas la preuve de la cible distante. --kubeconfig et --context explicites évitent current-context mutable et priorité d’un KUBECONFIG fusionné. Un kubeconfig peut contenir des identifiants administrateur ou plugins exécutables : n’utilisez que des fichiers fiables et ne versez jamais --raw dans les logs. En production, préférez des identifiants séparés et limités plutôt qu’une identité de flotte universellement privilégiée.",
     ),
+    { type: "diagram", name: "fleet-failure-domains" },
     h(
       "lab-preparation",
       "Two optional disposable single-node clusters",
@@ -57,15 +63,15 @@ export const multiCluster: Chapter = {
     ),
     code(
       "bash",
-      'kind get clusters\numask 077\nfleet_dir=$(mktemp -d)\nkind create cluster --name fleet-a --image kindest/node:v1.35.0 --config lab/level-4/multi-cluster/kind.yaml --kubeconfig "$fleet_dir/a.kubeconfig"\nkind create cluster --name fleet-b --image kindest/node:v1.35.0 --config lab/level-4/multi-cluster/kind.yaml --kubeconfig "$fleet_dir/b.kubeconfig"\nka() { kubectl --kubeconfig "$fleet_dir/a.kubeconfig" --context kind-fleet-a "$@"; }\nkb() { kubectl --kubeconfig "$fleet_dir/b.kubeconfig" --context kind-fleet-b "$@"; }',
+      'ka() { kubectl --kubeconfig "${fleet_dir:?}/a.kubeconfig" --context kind-fleet-a "$@"; }\nkb() { kubectl --kubeconfig "${fleet_dir:?}/b.kubeconfig" --context kind-fleet-b "$@"; }\nrequire_fleet_uid() {\n  [ -n "$2" ] &&\n    current_uid=$("$1" get namespace kube-system -o jsonpath=\'{.metadata.uid}\') &&\n    [ "$current_uid" = "$2" ]\n}\nLAB_FLEET_A_UID=\nLAB_FLEET_B_UID=\numask 077\nfleet_clusters=$(kind get clusters) &&\n  if printf \'%s\\n\' "$fleet_clusters" | grep -Exq \'fleet-a|fleet-b\'; then\n    printf \'Refusing to reuse an existing fleet cluster.\\n\' >&2\n    false\n  else\n    fleet_dir=$(mktemp -d) &&\n      kind create cluster --name fleet-a --image kindest/node:v1.35.0 --config lab/level-4/multi-cluster/kind.yaml --kubeconfig "$fleet_dir/a.kubeconfig" &&\n      LAB_FLEET_A_UID=$(ka get namespace kube-system -o jsonpath=\'{.metadata.uid}\') &&\n      test -n "$LAB_FLEET_A_UID" &&\n      kind create cluster --name fleet-b --image kindest/node:v1.35.0 --config lab/level-4/multi-cluster/kind.yaml --kubeconfig "$fleet_dir/b.kubeconfig" &&\n      LAB_FLEET_B_UID=$(kb get namespace kube-system -o jsonpath=\'{.metadata.uid}\') &&\n      test -n "$LAB_FLEET_B_UID"\n  fi',
     ),
     p(
-      "These commands write dedicated temporary kubeconfigs rather than changing your normal current context. Keep the directory variable and functions in this shell. The minimal kind clusters schedule demo workloads on their single node; they are not production HA layouts. If a creation fails, inspect kind output and remove only a newly created cluster you own before retrying; do not overwrite existing fleet names.",
-      "Ces commandes écrivent des kubeconfigs temporaires dédiés au lieu de changer votre contexte habituel. Gardez variable et fonctions dans ce shell. Les clusters kind minimaux placent le workload sur leur nœud unique ; ce n’est pas une architecture HA de production. Si la création échoue, examinez la sortie et retirez seulement un nouveau cluster vous appartenant avant de réessayer ; n’écrasez pas des noms existants.",
+      "These commands write dedicated temporary kubeconfigs rather than changing your normal current context. Keep the directory variable and functions in this shell. If only A was created, only its cleanup block can pass. The minimal kind clusters schedule demo workloads on their single node; they are not production HA layouts. If a creation fails, inspect kind output and remove only a newly created cluster you own before retrying; do not overwrite existing fleet names.",
+      "Ces commandes écrivent des kubeconfigs temporaires dédiés au lieu de changer votre contexte habituel. Gardez variable et fonctions dans ce shell. Si seul A a été créé, seul son bloc de nettoyage peut réussir. Les clusters kind minimaux placent le workload sur leur nœud unique ; ce n’est pas une architecture HA de production. Si la création échoue, examinez la sortie et retirez seulement un nouveau cluster vous appartenant avant de réessayer ; n’écrasez pas des noms existants.",
     ),
     code(
       "bash",
-      "ka cluster-info\nkb cluster-info\nka get namespace kube-system -o jsonpath='{.metadata.uid}'\nkb get namespace kube-system -o jsonpath='{.metadata.uid}'\nka create namespace lab-fleet\nkb create namespace lab-fleet",
+      'require_fleet_uid ka "${LAB_FLEET_A_UID:-}" &&\n  require_fleet_uid kb "${LAB_FLEET_B_UID:-}" &&\n  ka cluster-info &&\n  kb cluster-info &&\n  ka create namespace lab-fleet &&\n  kb create namespace lab-fleet',
     ),
     p(
       "Expected: different API endpoints and kube-system namespace UIDs. Those observations support that two independent API stores are being addressed. The same printed context nickname alone would not establish that. Each function selects a context and file; every following namespaced command also supplies -n lab-fleet.",
@@ -76,14 +82,25 @@ export const multiCluster: Chapter = {
       "Apply one reviewed contract in two waves",
       "Appliquer un contrat examiné en deux vagues",
     ),
+    { type: "diagram", name: "fleet-promotion" },
     code("yaml", web, "lab/level-4/multi-cluster/web.yaml"),
     code(
       "bash",
-      "ka -n lab-fleet apply -f lab/level-4/multi-cluster/web.yaml\nka -n lab-fleet rollout status deployment/web --timeout=120s\nka -n lab-fleet get endpointslices -l kubernetes.io/service-name=web\nkb -n lab-fleet apply -f lab/level-4/multi-cluster/web.yaml\nkb -n lab-fleet rollout status deployment/web --timeout=120s\nkb -n lab-fleet get endpointslices -l kubernetes.io/service-name=web",
+      'require_fleet_uid ka "${LAB_FLEET_A_UID:-}" &&\n  ka -n lab-fleet apply -f lab/level-4/multi-cluster/web.yaml',
     ),
     p(
       "For this manual exercise, inspect a ready endpoint in A before proceeding to B. In a real fleet, add application acceptance, error budgets, security checks and policy/version compatibility; Ready alone is too weak a promotion gate. This is deliberately manual distribution, not evidence of an installed GitOps fleet controller. ClusterIP addresses and service DNS may overlap and remain local; shared names do not make cross-cluster requests work.",
       "Pour cet exercice manuel, vérifiez un endpoint prêt dans A avant B. Pour une vraie flotte, ajoutez acceptation applicative, budgets d’erreurs, contrôles sécurité et compatibilité politiques/versions ; Ready seul est un critère insuffisant. La distribution est volontairement manuelle, pas la preuve d’un contrôleur GitOps installé. Les ClusterIP et DNS peuvent se recouvrir et restent locaux ; partager les noms ne permet pas les requêtes entre clusters.",
+    ),
+    code("bash", requireFleetAcceptance),
+    p(
+      "Promote B only after A passes. The next block checks A again just before applying to B.",
+      "Promouvez B seulement après la validation de A. Le bloc suivant vérifie à nouveau A juste avant d’appliquer sur B.",
+    ),
+    code(
+      "bash",
+      requireFleetPromotion +
+        " &&\n  kb -n lab-fleet apply -f lab/level-4/multi-cluster/web.yaml &&\n  kb -n lab-fleet rollout status deployment/web --timeout=120s",
     ),
     h("drift", "Distinguish drift from cluster failure", "Distinguer dérive et panne du cluster"),
     code(
@@ -182,7 +199,19 @@ export const multiCluster: Chapter = {
       [
         code(
           "bash",
-          "kb -n lab-fleet set image deployment/web web=nginxinc/nginx-unprivileged:missing-lab-tag\nkb -n lab-fleet rollout status deployment/web --timeout=30s\nkb -n lab-fleet describe pods -l app=fleet-web\nka -n lab-fleet rollout status deployment/web --timeout=120s\nkb -n lab-fleet rollout undo deployment/web\nkb -n lab-fleet rollout status deployment/web --timeout=120s",
+          requireFleetPromotion +
+            " &&\n  kb -n lab-fleet set image deployment/web web=nginxinc/nginx-unprivileged:missing-lab-tag",
+        ),
+        p(
+          "The next rollout wait is expected to time out. Inspect B before recovering it.",
+          "L’attente du rollout doit expirer. Examinez B avant de le rétablir.",
+        ),
+        code("bash", "kb -n lab-fleet rollout status deployment/web --timeout=30s"),
+        code("bash", "kb -n lab-fleet describe pods -l app=fleet-web"),
+        code(
+          "bash",
+          requireFleetPromotion +
+            " &&\n  kb -n lab-fleet rollout undo deployment/web &&\n  kb -n lab-fleet rollout status deployment/web --timeout=120s",
         ),
         p(
           "Expected: B reports an image retrieval failure while A retains a healthy desired revision. Existing B replicas may keep serving under its rollout budget: a stalled update is not necessarily a total outage. Both still fail together if the host disappears, so the result proves change scope only.",
@@ -193,7 +222,11 @@ export const multiCluster: Chapter = {
     h("cleanup", "Clean up each owned target", "Nettoyer chaque cible détenue"),
     code(
       "bash",
-      'ka delete namespace lab-fleet\nkb delete namespace lab-fleet\nkind delete cluster --name fleet-a --kubeconfig "$fleet_dir/a.kubeconfig"\nkind delete cluster --name fleet-b --kubeconfig "$fleet_dir/b.kubeconfig"\nprintf "Inspect and manually remove private kubeconfigs: %s\\n" "$fleet_dir"',
+      'require_fleet_uid ka "${LAB_FLEET_A_UID:-}" &&\n  kind delete cluster --name fleet-a --kubeconfig "$fleet_dir/a.kubeconfig"',
+    ),
+    code(
+      "bash",
+      'require_fleet_uid kb "${LAB_FLEET_B_UID:-}" &&\n  kind delete cluster --name fleet-b --kubeconfig "$fleet_dir/b.kubeconfig"',
     ),
     p(
       "Delete these clusters only if created for this exercise; the original k8s-ops-lab is untouched. Remove the temporary kubeconfigs manually after cleanup because they contain privileged local credentials. No external DNS, traffic routing or cloud resource was changed.",

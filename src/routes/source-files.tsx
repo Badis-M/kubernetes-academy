@@ -5,17 +5,35 @@ import type { CodeLang } from "@/content/types";
 import { useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/source-files")({
-  head: () => ({
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
+  head: ({ match }) => ({
     meta: [
-      { title: "Lab source files — Kubernetes Academy" },
+      {
+        title:
+          match.search.lang === "fr"
+            ? "Fichiers source du lab — Kubernetes Academy"
+            : "Lab source files — Kubernetes Academy",
+      },
       {
         name: "description",
-        content: "The FastAPI app, Dockerfile and Kubernetes manifests used in the guided lab.",
+        content:
+          match.search.lang === "fr"
+            ? "L’application FastAPI, le Dockerfile et les manifests Kubernetes utilisés dans le lab guidé."
+            : "The FastAPI app, Dockerfile and Kubernetes manifests used in the guided lab.",
       },
-      { property: "og:title", content: "Lab source files" },
+      {
+        property: "og:title",
+        content:
+          match.search.lang === "fr"
+            ? "Fichiers source du lab — Kubernetes Academy"
+            : "Lab source files",
+      },
       {
         property: "og:description",
-        content: "main.py, Dockerfile, Namespace, Deployment and Service manifests.",
+        content:
+          match.search.lang === "fr"
+            ? "L’application FastAPI, le Dockerfile et les manifests Kubernetes utilisés dans le lab guidé."
+            : "main.py, Dockerfile, Namespace, Deployment and Service manifests.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

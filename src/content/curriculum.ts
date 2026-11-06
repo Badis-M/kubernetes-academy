@@ -123,11 +123,11 @@ export const chapters: Chapter[] = [
   daemonsets,
   jobs,
   dns,
+  helmBasics,
   ingressGateway,
   networkPolicies,
   rbac,
   scheduling,
-  helmBasics,
   troubleshooting2,
   // Level 3
   helmCharts,

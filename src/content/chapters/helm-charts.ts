@@ -138,7 +138,7 @@ export const helmCharts: Chapter = {
         title: l("Lint and compare two renders", "Valider et comparer deux rendus"),
         code: {
           lang: "bash",
-          code: 'LAB_CHART_RENDER_DIR=$(mktemp -d)\nprintf \'Render directory: %s\\n\' "$LAB_CHART_RENDER_DIR"\nhelm version --short\nhelm lint lab/level-3/helm-charts/academy-web --kube-version 1.35.0\nhelm template chart-demo lab/level-3/helm-charts/academy-web --namespace lab-charts --kube-version 1.35.0 > "$LAB_CHART_RENDER_DIR/default.yaml"\nhelm template chart-demo lab/level-3/helm-charts/academy-web --namespace lab-charts --kube-version 1.35.0 -f lab/level-3/helm-charts/staging.yaml > "$LAB_CHART_RENDER_DIR/staging.yaml"\ndiff -u "$LAB_CHART_RENDER_DIR/default.yaml" "$LAB_CHART_RENDER_DIR/staging.yaml"',
+          code: 'LAB_CHART_RENDER_DIR=$(mktemp -d) &&\nprintf \'Render directory: %s\\n\' "$LAB_CHART_RENDER_DIR" &&\nhelm version --short &&\nhelm lint lab/level-3/helm-charts/academy-web --kube-version 1.35.0 &&\nhelm template chart-demo lab/level-3/helm-charts/academy-web --namespace lab-charts --kube-version 1.35.0 > "$LAB_CHART_RENDER_DIR/default.yaml" &&\nhelm template chart-demo lab/level-3/helm-charts/academy-web --namespace lab-charts --kube-version 1.35.0 -f lab/level-3/helm-charts/staging.yaml > "$LAB_CHART_RENDER_DIR/staging.yaml" &&\ndiff -u "$LAB_CHART_RENDER_DIR/default.yaml" "$LAB_CHART_RENDER_DIR/staging.yaml"',
         },
         explain: l(
           "diff returns 1 when differences exist; that is the expected comparison result, not a rendering failure. Inspect replica count, message, checksum and matching Service selectors in both files.",
@@ -167,8 +167,13 @@ export const helmCharts: Chapter = {
     h("live", "Optional installation and diagnosis", "Installation optionnelle et diagnostic"),
     code(
       "bash",
-      "helm install chart-demo lab/level-3/helm-charts/academy-web --kube-context kind-k8s-ops-lab --namespace lab-charts --wait --timeout 120s\nk -n lab-charts get deployment,service,configmap\nk -n lab-charts port-forward service/chart-demo-academy-web 8083:8080\n# In a second terminal:\ncurl --fail http://127.0.0.1:8083/",
+      "helm install chart-demo lab/level-3/helm-charts/academy-web --kube-context kind-k8s-ops-lab --namespace lab-charts --wait --timeout 120s &&\nk -n lab-charts get deployment,service,configmap &&\nk -n lab-charts port-forward service/chart-demo-academy-web 8083:8080",
     ),
+    p(
+      "Run the HTTP check in a second terminal while port-forward is running.",
+      "Lancez la vérification HTTP dans un second terminal pendant le port-forward.",
+    ),
+    code("bash", "curl --fail http://127.0.0.1:8083/"),
     p(
       "Expected response: Hello from a rendered chart. If rendering fails, inspect template scope and YAML indentation first; within a range, dot changes and root scope may require $. If installation fails after rendering, inspect API rejection, Pod Events and readiness separately. Lint and schema validation do not simulate admission policies, registry access or nginx runtime. Do not remove security settings merely to hide a permissions error: inspect the exact writable path.",
       "Réponse attendue : Hello from a rendered chart. Si le rendu échoue, examinez d’abord portée des templates et indentation YAML ; dans range, le point change et la racine peut nécessiter $. Si l’installation échoue après rendu, séparez rejet API, Events et readiness. Lint et schéma ne simulent ni admission, ni registre, ni exécution nginx. Ne supprimez pas les réglages de sécurité pour masquer un problème de permissions : identifiez le chemin inscriptible exact.",
@@ -270,7 +275,7 @@ export const helmCharts: Chapter = {
     ),
     code(
       "bash",
-      "helm uninstall chart-demo --kube-context kind-k8s-ops-lab --namespace lab-charts\nk delete namespace lab-charts",
+      "helm uninstall chart-demo --kube-context kind-k8s-ops-lab --namespace lab-charts &&\nk delete namespace lab-charts",
     ),
   ],
 };

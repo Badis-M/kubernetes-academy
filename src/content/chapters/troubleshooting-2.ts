@@ -73,7 +73,20 @@ export const troubleshooting2: Chapter = {
     ),
     code(
       "bash",
-      "k -n lab-triage set image deployment/web web=nginx:missing-lab-tag\nk -n lab-triage rollout status deployment/web --timeout=30s\nk -n lab-triage describe pods -l app=triage-web\nk -n lab-triage set image deployment/web web=nginx:1.28.0-alpine\nk -n lab-triage rollout status deployment/web --timeout=120s",
+      "k -n lab-triage set image deployment/web web=nginx:missing-lab-tag &&\nk -n lab-triage rollout status deployment/web --timeout=30s",
+    ),
+    p(
+      "Pause here. Inspect the failure with the next read-only/diagnostic commands; a rollout timeout or rejected dry-run can be expected. Record the actual symptom before recovery. Do not paste all blocks at once.",
+      "Arrêtez-vous ici. Examinez la panne avec les commandes de lecture/diagnostic suivantes ; timeout de rollout ou dry-run rejeté peuvent être attendus. Notez le symptôme réel avant la reprise. Ne collez pas tous les blocs à la fois.",
+    ),
+    code("bash", "k -n lab-triage describe pods -l app=triage-web"),
+    p(
+      "After explaining the observation, run this recovery block. Each failed recovery prerequisite stops the remaining commands.",
+      "Après avoir expliqué l’observation, lancez ce bloc de reprise. Chaque prérequis de reprise échoué arrête les commandes suivantes.",
+    ),
+    code(
+      "bash",
+      "k -n lab-triage set image deployment/web web=nginx:1.28.0-alpine &&\nk -n lab-triage rollout status deployment/web --timeout=120s",
     ),
     p(
       "The deliberate timeout is expected. Distinguish a nonexistent tag from denied registry credentials, DNS failure or registry throttling using Events. Restarting repeatedly does not publish the missing image. Verify the image reference and pull policy before changing network configuration.",
@@ -107,10 +120,20 @@ export const troubleshooting2: Chapter = {
       "5. Dépendance PVC avant le démarrage",
     ),
     code("yaml", storage, "lab/level-2/troubleshooting-2/broken-storage.yaml"),
+    code("bash", "k -n lab-triage apply -f lab/level-2/troubleshooting-2/broken-storage.yaml"),
+    p(
+      "Pause here. Inspect the failure with the next read-only/diagnostic commands; a rollout timeout or rejected dry-run can be expected. Record the actual symptom before recovery. Do not paste all blocks at once.",
+      "Arrêtez-vous ici. Examinez la panne avec les commandes de lecture/diagnostic suivantes ; timeout de rollout ou dry-run rejeté peuvent être attendus. Notez le symptôme réel avant la reprise. Ne collez pas tous les blocs à la fois.",
+    ),
     code(
       "bash",
-      "k -n lab-triage apply -f lab/level-2/troubleshooting-2/broken-storage.yaml\nk -n lab-triage get pod/storage-check pvc/data\nk -n lab-triage describe pvc data\nk -n lab-triage describe pod storage-check\nk get storageclasses\nk -n lab-triage delete -f lab/level-2/troubleshooting-2/broken-storage.yaml",
+      "k -n lab-triage get pod/storage-check pvc/data\nk -n lab-triage describe pvc data\nk -n lab-triage describe pod storage-check\nk get storageclasses",
     ),
+    p(
+      "After explaining the observation, run this recovery block. Each failed recovery prerequisite stops the remaining commands.",
+      "Après avoir expliqué l’observation, lancez ce bloc de reprise. Chaque prérequis de reprise échoué arrête les commandes suivantes.",
+    ),
+    code("bash", "k -n lab-triage delete -f lab/level-2/troubleshooting-2/broken-storage.yaml"),
     p(
       "Expected: the claim cannot provision using the deliberately nonexistent class and the Pod cannot mount its required volume. Do not edit an established PVC's immutable storageClassName or delete a production claim as a repair. Here the empty disposable claim is removed. In real storage triage inspect binding mode, capacity, access mode, volume topology and provisioner Events; WaitForFirstConsumer can intentionally defer binding. A Bound claim does not by itself prove successful mounting or application permissions.",
       "Attendu : le claim ne peut pas être provisionné avec la classe volontairement absente et le Pod ne peut monter son volume requis. Ne modifiez pas le storageClassName immuable d’un PVC établi et ne supprimez pas un claim de production comme réparation. Ici le claim jetable et vide est retiré. Pour un diagnostic réel, examinez binding mode, capacité, access mode, topologie et Events du provisioner ; WaitForFirstConsumer peut différer volontairement le binding. Un claim Bound ne prouve à lui seul ni montage réussi ni permissions applicatives.",

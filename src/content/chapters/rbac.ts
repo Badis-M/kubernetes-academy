@@ -51,6 +51,7 @@ export const rbac: Chapter = {
       "Permissions are additive: there is no deny rule overriding another grant. Deleting one binding does not revoke equivalent access granted elsewhere. Prefer exact resources and verbs: pods and pods/log are separate resources, the core API group is the empty string, and deployments belong to apps. Reading Secrets exposes credentials; creating Pods can indirectly expose mounted credentials. Do not repair a missing read permission with cluster-admin.",
       "Les permissions s’additionnent : aucune règle de refus ne neutralise un autre droit. Supprimer un binding ne retire pas un accès équivalent accordé ailleurs. Préférez des ressources et verbes précis : pods et pods/log sont distincts, le groupe API principal est la chaîne vide et deployments appartient à apps. Lire des Secrets expose des identifiants ; créer des Pods peut exposer indirectement des identifiants montés. Ne corrigez pas un droit de lecture manquant avec cluster-admin.",
     ),
+    { type: "diagram", name: "rbac-permission-flow" },
     ...labContext("lab-rbac"),
     note(
       "warn",

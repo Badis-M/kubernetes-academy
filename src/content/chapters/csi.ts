@@ -59,7 +59,7 @@ export const csi: Chapter = {
       ),
       l(
         "Default kind uses a local-path provisioner, not a CSI snapshot driver. Empty CSIDriver lists or missing snapshot CRDs are expected there. Do not create fake CRDs/classes or rename local-path to pretend support. Continue with architecture/diagnosis on that baseline; execute the optional cycle only on a disposable, separately prepared compatible CSI environment using the explicit context. No driver is installed by this lesson or agent.",
-        "Kind utilise par défaut un provisionneur local-path, pas un driver CSI de snapshots. CSIDriver vide ou CRD absentes y sont attendus. Ne créez pas de fausses CRD/classes et ne renommez pas local-path pour simuler le support. Continuez architecture/diagnostic sur cette base ; le cycle optionnel exige un environnement CSI compatible préparé séparément, avec contexte explicite. Aucun driver n’est installé par ce cours ou l’agent.",
+        "Kind utilise par défaut un provisionneur local-path, pas un driver CSI de snapshots. CSIDriver vide ou CRD absentes y sont attendus. Ne créez pas de fausses CRD/classes et ne renommez pas local-path pour simuler le support. Continuez architecture/diagnostic sur cette base ; le cycle optionnel exige un environnement CSI compatible préparé séparément, avec contexte explicite. Le parcours optionnel suppose un driver déjà installé.",
       ),
     ),
     p(
@@ -84,6 +84,7 @@ export const csi: Chapter = {
       "Enter the reviewed StorageClass and matching VolumeSnapshotClass at each read. Preserve the exact Ownership marker path printed by the script: cleanup requires that file. Expected only with the required components: distinct source/restored volumes, a ready snapshot and reader returning snapshot-marker-v1. A timeout is failure evidence requiring inspection, not proof of restoration. Objects remain for diagnosis; no automatic deletion runs on failure. A preflight refusal creates no ownership marker and authorizes no cleanup of an existing namespace.",
       "Saisissez les classes examinées à chaque read. Conservez le chemin Ownership marker exact affiché : le nettoyage exige ce fichier. Attendu seulement avec les composants requis : volumes source/restauré distincts, snapshot prêt et reader retournant snapshot-marker-v1. Un timeout est un échec à examiner, pas une preuve de restauration. Les objets restent pour diagnostic, sans suppression automatique à l’échec. Un refus de préflight ne crée aucune preuve et n’autorise aucun nettoyage d’un namespace existant.",
     ),
+    { type: "diagram", name: "csi-snapshot-timeline" },
     h("diagnosis", "Locate the failed RPC boundary", "Localiser la frontière RPC en échec"),
     code(
       "bash",

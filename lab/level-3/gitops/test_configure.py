@@ -40,12 +40,13 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             {path.name for path in self.destination.iterdir()},
-            {"argocd.yaml", "flux.yaml"},
+            {"argocd.yaml", "flux.yaml", "argo-project.yaml", "argo-application.yaml"},
         )
         for path in self.destination.iterdir():
             content = path.read_text(encoding="utf-8")
             self.assertNotIn("REPLACE_", content)
-            self.assertIn(COMMIT, content)
+            if path.name != "argo-project.yaml":
+                self.assertIn(COMMIT, content)
             self.assertIn("https://example.test/review.git", content)
 
     def test_existing_file_refuses_whole_generation_before_first_write(self):

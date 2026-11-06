@@ -29,8 +29,8 @@ export const pods: Chapter = {
     {
       type: "p",
       text: {
-        en: "Pods are ephemeral and disposable. They are never “moved” or “repaired”: when a managed Pod must be replaced after node loss or deletion, its controller can create a brand-new Pod with a new UID; a StatefulSet may reuse the name and the network may reuse an IP. That is why you rarely create bare Pods in practice — you create Deployments that create Pods for you. But understanding the Pod itself is essential for debugging.",
-        fr: "Les Pods sont éphémères et jetables. On ne les « déplace » ni ne les « répare » jamais : lorsqu’un Pod géré doit être remplacé après perte de nœud ou suppression, son contrôleur peut créer un tout nouveau Pod avec un nouvel UID ; un StatefulSet peut réutiliser le nom et le réseau peut réattribuer une IP. C'est pourquoi on crée rarement des Pods nus en pratique — on crée des Deployments qui les créent. Mais comprendre le Pod lui-même est indispensable pour déboguer.",
+        en: "Pods are ephemeral and disposable. A Pod is not moved to another node. Containers can restart and readiness can recover within the same Pod; when a managed Pod must be replaced after node loss or deletion, its controller can create a brand-new Pod with a new UID; a StatefulSet may reuse the name and the network may reuse an IP. That is why you rarely create bare Pods in practice — you create Deployments that create Pods for you. But understanding the Pod itself is essential for debugging.",
+        fr: "Les Pods sont éphémères et jetables. Un Pod ne migre pas vers un autre nœud. Ses conteneurs peuvent redémarrer et sa readiness se rétablir sans changer de Pod ; lorsqu’un Pod géré doit être remplacé après perte de nœud ou suppression, son contrôleur peut créer un tout nouveau Pod avec un nouvel UID ; un StatefulSet peut réutiliser le nom et le réseau peut réattribuer une IP. C'est pourquoi on crée rarement des Pods nus en pratique — on crée des Deployments qui les créent. Mais comprendre le Pod lui-même est indispensable pour déboguer.",
       },
     },
     {

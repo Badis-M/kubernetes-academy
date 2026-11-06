@@ -75,7 +75,7 @@ export const helmBasics: Chapter = {
         title: l("Render without a cluster write", "Rendre sans écriture sur le cluster"),
         code: {
           lang: "bash",
-          code: "helm version --short\nhelm lint lab/level-2/helm-basics/chart --kube-version 1.35.0\nhelm template demo lab/level-2/helm-basics/chart --namespace lab-helm --kube-version 1.35.0\nhelm template demo lab/level-2/helm-basics/chart --namespace lab-helm --kube-version 1.35.0 -f lab/level-2/helm-basics/values-lab.yaml",
+          code: "helm version --short &&\nhelm lint lab/level-2/helm-basics/chart --kube-version 1.35.0 &&\nhelm template demo lab/level-2/helm-basics/chart --namespace lab-helm --kube-version 1.35.0 &&\nhelm template demo lab/level-2/helm-basics/chart --namespace lab-helm --kube-version 1.35.0 -f lab/level-2/helm-basics/values-lab.yaml",
         },
         explain: l(
           "Compare the two outputs: defaults render replicas: 1 and Service port: 80; values-lab.yaml renders replicas: 2 and port: 8080, while the container still listens on 80. The {{ ... }} expressions must be absent from both outputs. Local rendering does not query admission controllers or prove the Pod can run. Do not apply this output separately: the next step lets Helm own the release lifecycle.",
@@ -86,7 +86,7 @@ export const helmBasics: Chapter = {
         title: l("Install the first revision", "Installer la première révision"),
         code: {
           lang: "bash",
-          code: "helm install demo lab/level-2/helm-basics/chart --kube-context kind-k8s-ops-lab --namespace lab-helm --wait --timeout 2m\nhelm status demo --kube-context kind-k8s-ops-lab --namespace lab-helm\nhelm get values demo --all --kube-context kind-k8s-ops-lab --namespace lab-helm\nk -n lab-helm get deployment,service",
+          code: "helm install demo lab/level-2/helm-basics/chart --kube-context kind-k8s-ops-lab --namespace lab-helm --wait --timeout 2m &&\nhelm status demo --kube-context kind-k8s-ops-lab --namespace lab-helm &&\nhelm get values demo --all --kube-context kind-k8s-ops-lab --namespace lab-helm &&\nk -n lab-helm get deployment,service",
         },
         explain: l(
           "Expected: release demo revision 1 with one available replica and a Service on port 80, if image retrieval and scheduling succeed. Readiness is a limited application signal, not a full end-to-end test.",
@@ -102,7 +102,7 @@ export const helmBasics: Chapter = {
     code("yaml", overrides, "lab/level-2/helm-basics/values-lab.yaml"),
     code(
       "bash",
-      "helm upgrade demo lab/level-2/helm-basics/chart --kube-context kind-k8s-ops-lab --namespace lab-helm --reset-values -f lab/level-2/helm-basics/values-lab.yaml --wait --timeout 2m --rollback-on-failure\nhelm history demo --kube-context kind-k8s-ops-lab --namespace lab-helm\nk -n lab-helm get deployment,service\nk -n lab-helm port-forward service/demo-web 8081:8080",
+      "helm upgrade demo lab/level-2/helm-basics/chart --kube-context kind-k8s-ops-lab --namespace lab-helm --reset-values -f lab/level-2/helm-basics/values-lab.yaml --wait --timeout 2m --rollback-on-failure &&\nhelm history demo --kube-context kind-k8s-ops-lab --namespace lab-helm &&\nk -n lab-helm get deployment,service &&\nk -n lab-helm port-forward service/demo-web 8081:8080",
     ),
     p(
       "Open http://localhost:8081, then stop port-forward with Ctrl+C. Expected after upgrade: two replicas and a Service port of 8080; nginx still listens on container port 80. --reset-values starts from chart defaults before the explicit override file, avoiding accidental reuse of a previous ad hoc value. Helm waits for declared resource readiness; automatic rollback on upgrade failure does not reverse external side effects or database writes.",
@@ -189,7 +189,7 @@ export const helmBasics: Chapter = {
       [
         code(
           "bash",
-          "helm history demo --kube-context kind-k8s-ops-lab --namespace lab-helm\nhelm rollback demo 1 --kube-context kind-k8s-ops-lab --namespace lab-helm --wait --timeout 2m\nhelm history demo --kube-context kind-k8s-ops-lab --namespace lab-helm\nk -n lab-helm get deployment,service",
+          "helm history demo --kube-context kind-k8s-ops-lab --namespace lab-helm &&\nhelm rollback demo 1 --kube-context kind-k8s-ops-lab --namespace lab-helm --wait --timeout 2m &&\nhelm history demo --kube-context kind-k8s-ops-lab --namespace lab-helm &&\nk -n lab-helm get deployment,service",
         ),
         p(
           "Expected in the uninterrupted sequence: one replica and Service port 80, recorded as revision 3. If you ran additional upgrades, the revision number will differ. The history preserves the sequence rather than erasing the attempted change.",
@@ -204,7 +204,7 @@ export const helmBasics: Chapter = {
     ),
     code(
       "bash",
-      "helm uninstall demo --kube-context kind-k8s-ops-lab --namespace lab-helm\nk delete namespace lab-helm",
+      "helm uninstall demo --kube-context kind-k8s-ops-lab --namespace lab-helm &&\nk delete namespace lab-helm",
     ),
     p(
       "This chart creates no CRDs, hooks, persistent volumes or cluster-scoped resources. More complex charts may leave such resources behind; inspect their lifecycle before installation. Reusable template engineering and dependencies are covered next.",

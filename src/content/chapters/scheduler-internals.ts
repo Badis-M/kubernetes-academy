@@ -161,7 +161,20 @@ export const schedulerInternals: Chapter = {
       [
         code(
           "bash",
-          'k -n lab-scheduler patch deployment queued-web --type=merge -p \'{"spec":{"template":{"spec":{"schedulerName":"lab-balanced"}}}}\'\nk -n lab-scheduler get pods -o wide\nk -n lab-scheduler patch deployment queued-web --type=merge -p \'{"spec":{"template":{"spec":{"schedulerName":"default-scheduler"}}}}\'\nk -n lab-scheduler rollout status deployment/queued-web --timeout=120s',
+          'k -n lab-scheduler patch deployment queued-web --type=merge -p \'{"spec":{"template":{"spec":{"schedulerName":"lab-balanced"}}}}\'',
+        ),
+        p(
+          "Pause here. Inspect the failure with the next read-only/diagnostic commands; a rollout timeout or rejected dry-run can be expected. Record the actual symptom before recovery. Do not paste all blocks at once.",
+          "Arrêtez-vous ici. Examinez la panne avec les commandes de lecture/diagnostic suivantes ; timeout de rollout ou dry-run rejeté peuvent être attendus. Notez le symptôme réel avant la reprise. Ne collez pas tous les blocs à la fois.",
+        ),
+        code("bash", "k -n lab-scheduler get pods -o wide"),
+        p(
+          "After explaining the observation, run this recovery block. Each failed recovery prerequisite stops the remaining commands.",
+          "Après avoir expliqué l’observation, lancez ce bloc de reprise. Chaque prérequis de reprise échoué arrête les commandes suivantes.",
+        ),
+        code(
+          "bash",
+          'k -n lab-scheduler patch deployment queued-web --type=merge -p \'{"spec":{"template":{"spec":{"schedulerName":"default-scheduler"}}}}\' &&\nk -n lab-scheduler rollout status deployment/queued-web --timeout=120s',
         ),
         p(
           "Expected after each replacement: lab-balanced remains unclaimed, then default-scheduler restores placement. A managed scheduler process must load the profile and possess required credentials/permissions before that name becomes functional. This lesson demonstrates configuration reasoning and recovery, not implementation of a custom scheduler.",

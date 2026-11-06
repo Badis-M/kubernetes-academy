@@ -8,18 +8,35 @@ import { BeforeYouBegin } from "@/components/academy/BeforeYouBegin";
 import { ScrollProgress } from "@/components/academy/ScrollProgress";
 
 export const Route = createFileRoute("/academy")({
-  head: () => ({
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
+  head: ({ match }) => ({
     meta: [
-      { title: "Curriculum — Kubernetes Academy" },
+      {
+        title:
+          match.search.lang === "fr"
+            ? "Programme — Kubernetes Academy"
+            : "Curriculum — Kubernetes Academy",
+      },
       {
         name: "description",
         content:
-          "The full Kubernetes curriculum: Foundations, Operating, Production and Internals & Extensibility, with durations and progress.",
+          match.search.lang === "fr"
+            ? "Le programme Kubernetes complet : bases, exploitation, production et mécanismes internes, avec durées et progression."
+            : "The full Kubernetes curriculum: Foundations, Operating, Production and Internals & Extensibility, with durations and progress.",
       },
-      { property: "og:title", content: "Kubernetes Academy curriculum" },
+      {
+        property: "og:title",
+        content:
+          match.search.lang === "fr"
+            ? "Programme — Kubernetes Academy"
+            : "Kubernetes Academy curriculum",
+      },
       {
         property: "og:description",
-        content: "Four levels from Pods to Operators, with hands-on labs.",
+        content:
+          match.search.lang === "fr"
+            ? "Le programme Kubernetes complet : bases, exploitation, production et mécanismes internes, avec durées et progression."
+            : "Four levels from Pods to Operators, with hands-on labs.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -40,8 +57,8 @@ function Academy() {
       </h1>
       <p className="mt-3 max-w-2xl text-muted-foreground">
         {lang === "fr"
-          ? "Rien n'est verrouillé : les prérequis sont des recommandations. Un chapitre n'est publié que lorsque ses explications, son lab et ses solutions sont complets ; les autres sont marqués « à venir »."
-          : "Nothing is locked: prerequisites are recommendations. A chapter is published only when its explanations, lab and solutions are complete; the rest are marked “upcoming”."}
+          ? "Rien n'est verrouillé : les prérequis sont des recommandations. Les 60 chapitres sont accessibles. Les exercices se réalisent dans votre terminal ; leur disponibilité ne constitue pas une validation sur votre cluster."
+          : "Nothing is locked: prerequisites are recommendations. All 60 chapters are accessible. Exercises run in your own terminal; availability does not establish validation on your cluster."}
       </p>
       <BeforeYouBegin />
       <div className="mt-12 space-y-14">

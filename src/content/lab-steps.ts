@@ -6,6 +6,7 @@ type GuidedStep = {
   goal: L;
   why: L;
   command: string;
+  preflight?: { command: string; instruction: L };
   explanation: L;
   expected: L;
   mistake: L;
@@ -28,7 +29,7 @@ export const labSteps = [
       fr: "Vérifier l’application seule permet de distinguer ses erreurs de celles de Docker ou Kubernetes.",
     },
     command:
-      "python3 --version\npython3 -m venv lab/.venv\nsource lab/.venv/bin/activate\npython -m pip install -r lab/app/requirements.txt\npython -m uvicorn main:app --app-dir lab/app --reload --host 127.0.0.1 --port 8000",
+      "python3 --version &&\npython3 -m venv lab/.venv &&\nsource lab/.venv/bin/activate &&\npython -m pip install -r lab/app/requirements.txt &&\npython -m uvicorn main:app --app-dir lab/app --reload --host 127.0.0.1 --port 8000",
     explanation: {
       en: "From the repository root, create an isolated Python environment under lab/.venv and start Uvicorn. Keep this terminal open; use a separate terminal at the repository root for subsequent steps. This local check is optional.",
       fr: "Depuis la racine du dépôt, créez un environnement Python isolé sous lab/.venv et démarrez Uvicorn. Gardez ce terminal ouvert ; utilisez un autre terminal à la racine du dépôt pour les étapes suivantes. Cette étape locale est optionnelle.",
@@ -153,11 +154,18 @@ export const labSteps = [
       en: "Deployment and Service are namespaced resources. The namespace must exist before Kubernetes can create resources inside it.",
       fr: "Deployment et Service sont des ressources de namespace.",
     },
+    preflight: {
+      command: "kubectl --context kind-k8s-ops-lab get namespace k8s-ops",
+      instruction: {
+        en: "Run this check first. Continue only if the result is `NotFound`. Stop if the namespace exists or if you get any other error.",
+        fr: "Lancez d’abord cette vérification. Continuez uniquement si le résultat est `NotFound`. Si le namespace existe ou si une autre erreur apparaît, arrêtez-vous.",
+      },
+    },
     command:
-      "kubectl --context kind-k8s-ops-lab get namespace k8s-ops\n# Continue only after confirming NotFound.\nkubectl --context kind-k8s-ops-lab create -f lab/k8s/working/namespace.yaml\nkubectl --context kind-k8s-ops-lab apply -f lab/k8s/working/deployment.yaml\nkubectl --context kind-k8s-ops-lab apply -f lab/k8s/working/service.yaml",
+      "LAB_GUIDED_NAMESPACE_UID=\nLAB_GUIDED_NAMESPACE_UID=$(kubectl --context kind-k8s-ops-lab create -f lab/k8s/working/namespace.yaml -o jsonpath='{.metadata.uid}') &&\n  test -n \"$LAB_GUIDED_NAMESPACE_UID\" &&\n  kubectl --context kind-k8s-ops-lab apply -f lab/k8s/working/deployment.yaml &&\n  kubectl --context kind-k8s-ops-lab apply -f lab/k8s/working/service.yaml",
     explanation: {
-      en: "Confirm k8s-ops is absent before creating it. If it exists, stop and inspect it. Apply the real files in order with an explicit context; do not rely on your shell current context.",
-      fr: "Confirmez que k8s-ops est absent avant de le créer. S’il existe déjà, arrêtez-vous et inspectez-le. Appliquez ensuite les fichiers réels dans l’ordre. Le contexte explicite évite de dépendre du contexte courant de votre shell.",
+      en: "Each command runs only if the previous one succeeds. If namespace creation fails, neither manifest is applied. All commands target the explicit lab context.",
+      fr: "Chaque commande s’exécute uniquement si la précédente réussit. Si la création du namespace échoue, aucun des deux manifests n’est appliqué. Toutes les commandes ciblent explicitement le contexte du lab.",
     },
     expected: {
       en: "The k8s-ops Namespace exists, then the k8s-ops-api-deployment Deployment and k8s-ops-api-service Service are created inside it.",
@@ -244,11 +252,11 @@ export const labSteps = [
       fr: "Accéder avec port-forward",
     },
     goal: {
-      en: "Reach the Service from your local machine.",
+      en: "Reach a selected Pod from your local machine.",
       fr: "Tester un Pod depuis la machine locale.",
     },
     why: {
-      en: "A ClusterIP Service is internal to the cluster, so local access needs a tunnel from your machine to the Kubernetes Service.",
+      en: "A ClusterIP Service does not publish a port on the host; this command uses the Service to select a Pod for a local tunnel.",
       fr: "Un Service ClusterIP ne publie pas directement un port sur la machine hôte.",
     },
     command:
@@ -310,10 +318,10 @@ export const labSteps = [
       fr: "Un lab doit pouvoir être répété sans détruire un environnement partagé.",
     },
     command:
-      "# Stop Uvicorn and port-forward with Ctrl+C in their terminals.\n# Only if you created k8s-ops for this exercise:\nkubectl --context kind-k8s-ops-lab delete namespace k8s-ops",
+      'test -n "${LAB_GUIDED_NAMESPACE_UID:-}" &&\n  current_uid=$(kubectl --context kind-k8s-ops-lab get namespace k8s-ops -o jsonpath=\'{.metadata.uid}\') &&\n  test "$current_uid" = "$LAB_GUIDED_NAMESPACE_UID" &&\n  kubectl --context kind-k8s-ops-lab delete namespace k8s-ops',
     explanation: {
-      en: "Stop the local processes, then remove k8s-ops only if you created it for this exercise. Whole-cluster deletion is a separate choice: kind delete cluster --name k8s-ops-lab destroys other chapters too. The Docker image and lab/.venv remain on the host.",
-      fr: "Arrêtez Uvicorn et port-forward avec Ctrl+C dans leurs terminaux. Supprimez k8s-ops uniquement si vous l’avez créé pour cet exercice. Supprimer le cluster entier reste une décision distincte : kind delete cluster --name k8s-ops-lab détruit aussi les ressources des autres chapitres. L’image Docker et lab/.venv restent sur la machine.",
+      en: "Stop the local processes, then use the same terminal as step 05. Cleanup checks the namespace UID recorded at creation. Whole-cluster deletion is a separate choice: kind delete cluster --name k8s-ops-lab destroys other chapters too. The Docker image and lab/.venv remain on the host.",
+      fr: "Arrêtez Uvicorn et port-forward avec Ctrl+C dans leurs terminaux. Utilisez ensuite le même terminal qu’à l’étape 05. Le nettoyage vérifie l’UID du namespace enregistré à la création. Supprimer le cluster entier reste une décision distincte : kind delete cluster --name k8s-ops-lab détruit aussi les ressources des autres chapitres. L’image Docker et lab/.venv restent sur la machine.",
     },
     expected: {
       en: "The lab namespace and its resources should disappear; other namespaces remain.",

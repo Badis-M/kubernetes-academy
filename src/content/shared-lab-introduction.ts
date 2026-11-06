@@ -86,7 +86,7 @@ export const sharedLabIntroduction: Block[] = [
   {
     type: "code",
     lang: "bash",
-    code: 'printf \'Enter your local kind context: \'\nIFS= read -r K8S_CONTEXT\nexport K8S_CONTEXT\n\nfunction k() {\n  case "$K8S_CONTEXT" in\n    kind-?*) kubectl --context "$K8S_CONTEXT" "$@" ;;\n    *) printf \'Select a nonempty local kind context first.\\n\' >&2; return 1 ;;\n  esac\n}\n\nk get nodes',
+    code: 'printf \'Enter your local kind context: \'\nIFS= read -r K8S_CONTEXT\nexport K8S_CONTEXT\n\nunalias k 2>/dev/null || true\nfunction k() {\n  case "$K8S_CONTEXT" in\n    kind-?*) kubectl --context "$K8S_CONTEXT" "$@" ;;\n    *) printf \'Select a nonempty local kind context first.\\n\' >&2; return 1 ;;\n  esac\n}\n\nk get nodes',
   },
   {
     type: "h2",

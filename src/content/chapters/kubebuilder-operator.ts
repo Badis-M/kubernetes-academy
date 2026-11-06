@@ -88,7 +88,7 @@ export const kubebuilderOperator: Chapter = {
       title: l("Regenerate, review, test and build", "Régénérer, examiner, tester et construire"),
       code: {
         lang: "bash",
-        code: 'umask 077\nLAB_OPERATOR_BUILD_DIR=$(mktemp -d)\nprintf \'Private build directory: %s\\n\' "$LAB_OPERATOR_BUILD_DIR"\ncd lab/level-4/custom-controllers/greeting-operator\nGOTOOLCHAIN=local GOMAXPROCS=2 make generate\nGOTOOLCHAIN=local GOMAXPROCS=2 go test -p 2 ./...\nGOTOOLCHAIN=local GOMAXPROCS=2 go build -o "$LAB_OPERATOR_BUILD_DIR/greeting-controller" ./cmd\ncd ../../../..\ngit diff -- lab/level-4/crds/greetings.yaml lab/level-4/custom-controllers/greeting-operator/api',
+        code: 'umask 077 &&\nLAB_OPERATOR_BUILD_DIR=$(mktemp -d) &&\nprintf \'Private build directory: %s\\n\' "$LAB_OPERATOR_BUILD_DIR" &&\nGOTOOLCHAIN=local GOMAXPROCS=2 make -C lab/level-4/custom-controllers/greeting-operator generate &&\nGOTOOLCHAIN=local GOMAXPROCS=2 go -C lab/level-4/custom-controllers/greeting-operator test -p 2 ./... &&\nGOTOOLCHAIN=local GOMAXPROCS=2 go -C lab/level-4/custom-controllers/greeting-operator build -o "$LAB_OPERATOR_BUILD_DIR/greeting-controller" ./cmd &&\ngit diff -- lab/level-4/crds/greetings.yaml lab/level-4/custom-controllers/greeting-operator/api',
       },
       explain: l(
         "This compact Makefile combines deepcopy and CRD generation in one generate target; a standard scaffold usually separates generate and manifests. It does not apply anything to a cluster. Review changes rather than assuming generated output is harmless: changing defaults, required fields or CEL can break existing clients.",
@@ -113,6 +113,14 @@ export const kubebuilderOperator: Chapter = {
       ),
     ),
     ...labContext("lab-operator"),
+    p(
+      "Python 3 is required. The four Greeting lessons share one receipt in LAB_GREETING_STATE. Create it only once in this shell and reuse the same path across these chapters. The helper creates an absent CRD, or verifies its recorded UID and exact server-returned spec; it never applies over an existing definition. Without the original receipt, stop. After a failed creation, inspect the partial state instead of deleting the receipt or adopting the type. Keep managers stopped while changing lessons.",
+      "Python 3 est requis. Les quatre cours Greeting partagent une preuve dans LAB_GREETING_STATE. Préparez-la une seule fois dans ce shell et réutilisez le même chemin entre ces chapitres. Le helper crée une CRD absente ou vérifie son UID enregistré et sa spec exacte retournée par le serveur ; il ne remplace jamais une définition existante. Sans preuve d’origine, arrêtez-vous. Après une création échouée, inspectez l’état partiel au lieu de supprimer la preuve ou d’adopter le type. Arrêtez les managers avant de changer de cours.",
+    ),
+    code(
+      "bash",
+      'if [ -z "${LAB_GREETING_STATE:-}" ]; then\n  shared_dir=$(mktemp -d) &&\n    export LAB_GREETING_STATE="$shared_dir/greeting-schema.json"\nfi\ntest -n "${LAB_GREETING_STATE:-}"',
+    ),
     h(
       "image",
       "Optional image and scoped in-cluster manager",
@@ -121,7 +129,7 @@ export const kubebuilderOperator: Chapter = {
     code("yaml", manager, "lab/level-4/custom-controllers/greeting-operator/config/manager.yaml"),
     code(
       "bash",
-      "k apply -f lab/level-4/crds/greetings.yaml\nk wait --for=condition=Established crd/greetings.learning.k8svisual.dev --timeout=60s\ndocker build -t greeting-controller:local lab/level-4/custom-controllers/greeting-operator\nkind load docker-image greeting-controller:local --name k8s-ops-lab\nk apply -f lab/level-4/custom-controllers/greeting-operator/config/rbac.yaml\nk apply -f lab/level-4/custom-controllers/greeting-operator/config/manager.yaml\nk -n lab-operator rollout status deployment/greeting-controller --timeout=180s\nLAB_GREETING_GENERATION=$(k -n lab-operator apply -f lab/level-4/crds/hello.yaml -o jsonpath='{.metadata.generation}')\nk -n lab-operator wait --for=jsonpath='{.status.observedGeneration}'=\"$LAB_GREETING_GENERATION\" greeting/hello --timeout=180s\nk -n lab-operator wait --for=condition=Ready greeting/hello --timeout=180s\nk -n lab-operator get greeting hello -o yaml\nk -n lab-operator logs deployment/greeting-controller --tail=30",
+      "python3 lab/scripts/greeting-schema.py \"${LAB_GREETING_STATE:?Prepare the shared receipt first}\" &&\nk wait --for=condition=Established crd/greetings.learning.k8svisual.dev --timeout=60s &&\ndocker build -t greeting-controller:local lab/level-4/custom-controllers/greeting-operator &&\nkind load docker-image greeting-controller:local --name k8s-ops-lab &&\nk apply -f lab/level-4/custom-controllers/greeting-operator/config/rbac.yaml &&\nk apply -f lab/level-4/custom-controllers/greeting-operator/config/manager.yaml &&\nk -n lab-operator rollout status deployment/greeting-controller --timeout=180s &&\nLAB_GREETING_GENERATION=$(k -n lab-operator apply -f lab/level-4/crds/hello.yaml -o jsonpath='{.metadata.generation}') &&\nk -n lab-operator wait --for=jsonpath='{.status.observedGeneration}'=\"$LAB_GREETING_GENERATION\" greeting/hello --timeout=180s &&\nk -n lab-operator wait --for=condition=Ready greeting/hello --timeout=180s &&\nk -n lab-operator get greeting hello -o yaml &&\nk -n lab-operator logs deployment/greeting-controller --tail=30",
     ),
     p(
       "Perform the shared CRD ownership check before installation. The image is loaded into this named kind cluster and imagePullPolicy: Never avoids accidentally fetching a different image. The scratch runtime contains the static binary, uses UID 65532 and needs its projected ServiceAccount token to reach Kubernetes. Cache scope plus a namespaced Role constrain the normal deployment path. Leader election uses a namespaced Lease; one host still provides no physical HA. Health probes only show process responsiveness. Wait for the exact Greeting generation returned by apply, then Ready, so an old condition cannot validate a new spec. Verify HTTP behavior independently, using port-forward service/hello 8082:8080 if desired.",
@@ -234,8 +242,8 @@ export const kubebuilderOperator: Chapter = {
       "Nettoyer seulement l’environnement réellement créé",
     ),
     p(
-      "Stop local managers and port-forward if any, then remove the dedicated namespace. Inspect and manually remove the exact LAB_SCAFFOLD_DIR, if created, and LAB_OPERATOR_BUILD_DIR after stopping their processes; they are local only. Keep the shared CRD if other lessons still use it; follow the global instance inventory before removing it. No cluster, manager, Docker build or envtest service was started by the curriculum authoring checks.",
-      "Arrêtez managers locaux et port-forward éventuels puis retirez le namespace dédié. Examinez puis retirez les dossiers exacts LAB_SCAFFOLD_DIR, si créé, et LAB_OPERATOR_BUILD_DIR après arrêt de leurs processus ; ils restent locaux. Gardez la CRD partagée si d’autres leçons l’utilisent ; vérifiez l’inventaire global avant retrait. Aucun cluster, manager, build Docker ou service envtest n’a été démarré par les vérifications de rédaction.",
+      "Stop local managers and port-forward if any, then remove the dedicated namespace. Inspect and manually remove the exact LAB_SCAFFOLD_DIR, if created, and LAB_OPERATOR_BUILD_DIR after stopping their processes; they are local only. Keep the shared CRD and its original receipt until the dedicated lab cluster is discarded after every lesson. No cluster, manager, Docker build or envtest service was started by the curriculum authoring checks.",
+      "Arrêtez managers locaux et port-forward éventuels puis retirez le namespace dédié. Examinez puis retirez les dossiers exacts LAB_SCAFFOLD_DIR, si créé, et LAB_OPERATOR_BUILD_DIR après arrêt de leurs processus ; ils restent locaux. Conservez la CRD partagée et sa preuve d’origine jusqu’au retrait du cluster de lab dédié après tous les cours. Aucun cluster, manager, build Docker ou service envtest n’a été démarré par les vérifications de rédaction.",
     ),
     code("bash", "k delete namespace lab-operator"),
   ],

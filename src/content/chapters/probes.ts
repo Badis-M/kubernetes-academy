@@ -49,6 +49,7 @@ export const probes: Chapter = {
         },
       },
     ] satisfies Block[]),
+    { type: "diagram", name: "probe-decisions" },
     ...labContext("lab-probes"),
     ...([
       {

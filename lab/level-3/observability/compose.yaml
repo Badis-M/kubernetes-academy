@@ -1,5 +1,7 @@
 services:
   app:
+    labels:
+      dev.k8sacademy.observability-run: ${LAB_OBS_RUN:?Use stack.py to reserve this run}
     build: .
     environment:
       LAB_OTLP_ENDPOINT: http://collector:4318
@@ -9,6 +11,8 @@ services:
       - collector
     mem_limit: 128m
   collector:
+    labels:
+      dev.k8sacademy.observability-run: ${LAB_OBS_RUN:?Use stack.py to reserve this run}
     image: otel/opentelemetry-collector-contrib:0.163.0
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
@@ -17,6 +21,8 @@ services:
       - "127.0.0.1:8889:8889"
     mem_limit: 256m
   prometheus:
+    labels:
+      dev.k8sacademy.observability-run: ${LAB_OBS_RUN:?Use stack.py to reserve this run}
     image: prom/prometheus:v3.15.1
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -28,6 +34,8 @@ services:
       - "127.0.0.1:9090:9090"
     mem_limit: 512m
   grafana:
+    labels:
+      dev.k8sacademy.observability-run: ${LAB_OBS_RUN:?Use stack.py to reserve this run}
     image: grafana/grafana:13.2.4
     environment:
       GF_SECURITY_ADMIN_USER: lab-admin
@@ -42,4 +50,12 @@ services:
     mem_limit: 512m
 volumes:
   prometheus-data:
+    labels:
+      dev.k8sacademy.observability-run: ${LAB_OBS_RUN:?Use stack.py}
   grafana-data:
+    labels:
+      dev.k8sacademy.observability-run: ${LAB_OBS_RUN:?Use stack.py}
+networks:
+  default:
+    labels:
+      dev.k8sacademy.observability-run: ${LAB_OBS_RUN:?Use stack.py}

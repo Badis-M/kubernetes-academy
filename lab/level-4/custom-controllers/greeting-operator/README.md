@@ -11,11 +11,11 @@ This compact Go project is shared by `custom-controllers`, `operators` and `kube
 From this directory:
 
 ```bash
-GOTOOLCHAIN=local GOMAXPROCS=2 go mod download
-GOTOOLCHAIN=local GOMAXPROCS=2 make generate
-GOTOOLCHAIN=local GOMAXPROCS=2 go test -p 2 ./...
-umask 077
-LAB_OPERATOR_BUILD_DIR=$(mktemp -d)
+GOTOOLCHAIN=local GOMAXPROCS=2 go mod download &&
+GOTOOLCHAIN=local GOMAXPROCS=2 make generate &&
+GOTOOLCHAIN=local GOMAXPROCS=2 go test -p 2 ./... &&
+umask 077 &&
+LAB_OPERATOR_BUILD_DIR=$(mktemp -d) &&
 GOTOOLCHAIN=local GOMAXPROCS=2 go build -o "$LAB_OPERATOR_BUILD_DIR/greeting-controller" ./cmd
 ```
 
@@ -36,13 +36,20 @@ Fake-client tests cover deterministic children, repeated calls with no extra wri
 
 ## Optional local run
 
-No step in this README was executed against a cluster by the authoring agent. From the repository root, first inspect any existing shared CRD; do not overwrite another project's type. Then, on the reviewed disposable lab only:
+No step in this README was executed against a cluster by the authoring agent. From the repository root, use the shared receipt below. Python 3 is required. The CRD is created only when absent; reuse requires the original receipt, the same UID, unchanged server-returned spec and unchanged source manifest. Never substitute or delete a receipt to adopt an existing CRD. Keep this shell and receipt across the four Greeting chapters; stop managers before switching lessons. On the reviewed disposable lab only:
 
 ```bash
-alias k='kubectl --context kind-k8s-ops-lab'
-k create namespace lab-operator
-k apply -f lab/level-4/crds/greetings.yaml
-k wait --for=condition=Established crd/greetings.learning.k8svisual.dev --timeout=60s
+function k() { kubectl --context kind-k8s-ops-lab "$@"; }
+if [ -z "${LAB_GREETING_STATE:-}" ]; then
+  shared_dir=$(mktemp -d) &&
+    export LAB_GREETING_STATE="$shared_dir/greeting-schema.json"
+fi
+LAB_OPERATOR_NS_UID=
+python3 lab/scripts/greeting-schema.py "${LAB_GREETING_STATE:?Prepare the shared receipt first}" &&
+  k wait --for=condition=Established crd/greetings.learning.k8svisual.dev --timeout=60s &&
+  created_namespace_uid=$(k create namespace lab-operator -o jsonpath='{.metadata.uid}') &&
+  test -n "$created_namespace_uid" &&
+  LAB_OPERATOR_NS_UID="$created_namespace_uid"
 ```
 
 Build with the offline instructions above, then choose the local process:
@@ -56,10 +63,10 @@ The explicit context is required outside Kubernetes: with no context argument, t
 From a second terminal at the repository root:
 
 ```bash
-LAB_GREETING_GENERATION=$(kubectl --context kind-k8s-ops-lab -n lab-operator apply -f lab/level-4/crds/hello.yaml -o jsonpath='{.metadata.generation}')
-kubectl --context kind-k8s-ops-lab -n lab-operator wait --for=jsonpath='{.status.observedGeneration}'="$LAB_GREETING_GENERATION" greeting/hello --timeout=180s
-kubectl --context kind-k8s-ops-lab -n lab-operator wait --for=condition=Ready greeting/hello --timeout=180s
-kubectl --context kind-k8s-ops-lab -n lab-operator get greetings,deployments,services,configmaps
+LAB_GREETING_GENERATION=$(kubectl --context kind-k8s-ops-lab -n lab-operator apply -f lab/level-4/crds/hello.yaml -o jsonpath='{.metadata.generation}') &&
+kubectl --context kind-k8s-ops-lab -n lab-operator wait --for=jsonpath='{.status.observedGeneration}'="$LAB_GREETING_GENERATION" greeting/hello --timeout=180s &&
+kubectl --context kind-k8s-ops-lab -n lab-operator wait --for=condition=Ready greeting/hello --timeout=180s &&
+kubectl --context kind-k8s-ops-lab -n lab-operator get greetings,deployments,services,configmaps &&
 kubectl --context kind-k8s-ops-lab -n lab-operator port-forward service/hello 8082:8080
 ```
 
@@ -70,10 +77,10 @@ Use `curl --fail http://127.0.0.1:8082/` in another terminal. The website may al
 Use this path instead of a local manager. From the repository root, after explicitly preparing the disposable namespace/CRD:
 
 ```bash
-docker build -t greeting-controller:local lab/level-4/custom-controllers/greeting-operator
-kind load docker-image greeting-controller:local --name k8s-ops-lab
-kubectl --context kind-k8s-ops-lab apply -f lab/level-4/custom-controllers/greeting-operator/config/rbac.yaml
-kubectl --context kind-k8s-ops-lab apply -f lab/level-4/custom-controllers/greeting-operator/config/manager.yaml
+docker build -t greeting-controller:local lab/level-4/custom-controllers/greeting-operator &&
+kind load docker-image greeting-controller:local --name k8s-ops-lab &&
+kubectl --context kind-k8s-ops-lab apply -f lab/level-4/custom-controllers/greeting-operator/config/rbac.yaml &&
+kubectl --context kind-k8s-ops-lab apply -f lab/level-4/custom-controllers/greeting-operator/config/manager.yaml &&
 kubectl --context kind-k8s-ops-lab -n lab-operator rollout status deployment/greeting-controller --timeout=180s
 ```
 
@@ -84,10 +91,13 @@ The runtime is a static Go binary in a scratch image, running as UID 65532. Its 
 Stop the local process and port-forward with Ctrl+C if used. Delete the dedicated namespace; it removes the in-cluster manager, Role/RoleBinding, Lease, custom instances and child workloads. The shared CRD remains:
 
 ```bash
-kubectl --context kind-k8s-ops-lab delete namespace lab-operator
-kubectl --context kind-k8s-ops-lab get greetings.learning.k8svisual.dev --all-namespaces
+test -n "${LAB_OPERATOR_NS_UID:-}" &&
+  current_uid=$(kubectl --context kind-k8s-ops-lab get namespace lab-operator -o jsonpath='{.metadata.uid}') &&
+  test "$current_uid" = "$LAB_OPERATOR_NS_UID" &&
+  kubectl --context kind-k8s-ops-lab delete namespace lab-operator --wait=true --timeout=120s &&
+  kubectl --context kind-k8s-ops-lab get greetings.learning.k8svisual.dev --all-namespaces
 ```
 
-Only if you installed this exact type and no remaining instance belongs to another chapter, explicitly delete `greetings.learning.k8svisual.dev`. Never remove unrelated CRDs, finalizers, roles or clusters for this cleanup.
+Keep the shared CRD and its receipt for subsequent chapters. This procedure deliberately does not delete the cluster-scoped definition: an instance inventory is not a lock against concurrent creation. Dispose of the dedicated lab cluster using lab/README.md only after every chapter is finished. Never remove unrelated CRDs, finalizers, roles or clusters.
 
 Keep `LAB_OPERATOR_BUILD_DIR` in the manager terminal. After stopping the manager, inspect and manually remove that exact private directory.

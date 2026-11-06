@@ -176,8 +176,8 @@ export const architecture: Chapter = {
           fr: "Le kubelet demande au runtime (CRI) de créer le sandbox du Pod ; le runtime appelle le CNI pour le réseau, puis démarre le conteneur `api` à partir de `k8s-ops-api:local`.",
         },
         {
-          en: "The kubelet reports status (`Running`, Pod IP) to the API server, which stores it. The Deployment's status now shows 2/2 available, and the EndpointSlice controller adds the Pod IPs behind any matching Service.",
-          fr: "Le kubelet remonte le statut (`Running`, IP du Pod) à l'API server qui le stocke. Le statut du Deployment indique 2/2 disponibles, et le contrôleur EndpointSlice ajoute les IP des Pods derrière tout Service correspondant.",
+          en: "The kubelet reports status (`Running`, Pod IP) to the API server, which stores it. Running and an IP do not establish readiness. Once both Pods are Ready for the Deployment’s minReadySeconds, its status can show 2/2 available. For a matching Service, check endpoint readiness separately.",
+          fr: "Le kubelet remonte le statut (`Running`, IP du Pod) à l'API server qui le stocke. Running et une adresse IP ne prouvent pas que les Pods sont prêts. Quand les deux Pods sont Ready depuis au moins minReadySeconds, le statut du Deployment peut indiquer 2/2 disponibles. Pour un Service correspondant, vérifiez séparément l’état des endpoints.",
         },
       ],
     },
@@ -246,8 +246,8 @@ export const architecture: Chapter = {
             code: "# terminal 1\nk get events -A --watch\n\n# terminal 2\nk create deployment hello --image=nginx:1.27 --replicas=2",
           },
           explain: {
-            en: "Events are written by components as they act. You will see, in order: ScalingReplicaSet (Deployment controller), SuccessfulCreate (ReplicaSet controller), Scheduled (scheduler), Pulling/Pulled/Created/Started (kubelet). This is the diagram's lifecycle in real time.",
-            fr: "Les événements sont écrits par les composants quand ils agissent. Vous verrez dans l'ordre : ScalingReplicaSet (contrôleur Deployment), SuccessfulCreate (contrôleur ReplicaSet), Scheduled (scheduler), Pulling/Pulled/Created/Started (kubelet). C'est le cycle du schéma en temps réel.",
+            en: "Events are written by components as they act. Look for the causal chain: ScalingReplicaSet (Deployment controller), SuccessfulCreate (ReplicaSet controller), Scheduled (scheduler), Pulling/Pulled/Created/Started (kubelet). Events can arrive late or be aggregated; their display order is not a guaranteed execution trace.",
+            fr: "Les événements sont écrits par les composants quand ils agissent. Recherchez la chaîne causale : ScalingReplicaSet (contrôleur Deployment), SuccessfulCreate (contrôleur ReplicaSet), Scheduled (scheduler), Pulling/Pulled/Created/Started (kubelet). Les Events peuvent arriver tard ou être agrégés ; leur ordre d’affichage n’est pas une trace d’exécution garantie.",
           },
           mistake: {
             en: "Running the watch after creating the Deployment: events appear quickly, start the watch first.",

@@ -58,6 +58,7 @@ export const initSidecars: Chapter = {
         "Une readinessProbe de sidecar contribue à la readiness du Pod. Lors d’un arrêt normal, les sidecars natifs s’arrêtent après les conteneurs principaux, dans l’ordre inverse d’initialisation, avec la période de grâce globale du Pod. Dans un Job, un sidecar natif n’empêche pas l’achèvement du travail principal ; un compagnon ordinaire infini peut le bloquer. Cela ne garantit pas la livraison de logs en mémoire après une panne hôte.",
       ),
     ),
+    { type: "diagram", name: "init-sidecar-timeline" },
     ...labContext("lab-sidecars"),
     h(
       "manifest",
@@ -128,8 +129,8 @@ export const initSidecars: Chapter = {
           code: "k -n lab-sidecars port-forward pod/sidecar-web 8082:8080\n# In a second terminal:\ncurl --fail http://127.0.0.1:8082/\nkubectl --context kind-k8s-ops-lab -n lab-sidecars logs sidecar-web -c access-log --tail=10",
         },
         explain: l(
-          "Keep port-forward running in the first terminal. The second command uses an explicit context because shell aliases do not automatically transfer between terminals.",
-          "Laissez port-forward actif dans le premier terminal. La seconde commande utilise un contexte explicite car un alias ne se transmet pas automatiquement entre terminaux.",
+          "Keep port-forward running in the first terminal. The second command uses an explicit context because shell functions do not automatically transfer between terminals.",
+          "Laissez port-forward actif dans le premier terminal. La seconde commande utilise un contexte explicite car une fonction shell ne se transmet pas automatiquement entre terminaux.",
         ),
         expected: {
           text: l(

@@ -77,13 +77,13 @@ export const setupKind: Chapter = {
       type: "code",
       lang: "bash",
       title: "Linux / WSL2 (amd64)",
-      code: 'curl -fLO https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl\ncurl -fLO https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl.sha256\nprintf "%s  kubectl\\n" "$(cat kubectl.sha256)" | sha256sum --check &&\n  sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl\n# Stop if download, checksum or installation fails.\nrm kubectl kubectl.sha256\nkubectl version --client',
+      code: '(\n  install_dir=$(mktemp -d) &&\n  cd "$install_dir" &&\ncurl -fLO https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl &&\ncurl -fLO https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl.sha256 &&\nchecksum=$(cat kubectl.sha256) &&\n  printf "%s  kubectl\\n" "$checksum" > kubectl.checksum &&\n  sha256sum --check kubectl.checksum &&\n  sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl &&\nrm kubectl kubectl.sha256 &&\nkubectl version --client\n)',
     },
     {
       type: "code",
       lang: "bash",
       title: "macOS (Homebrew)",
-      code: "brew install kubectl\nkubectl version --client",
+      code: "brew install kubectl &&\nkubectl version --client",
     },
     {
       type: "p",
@@ -97,13 +97,13 @@ export const setupKind: Chapter = {
       type: "code",
       lang: "bash",
       title: "Linux / WSL2 (amd64)",
-      code: "curl -fLO https://github.com/kubernetes-sigs/kind/releases/download/v0.31.0/kind-linux-amd64\ncurl -fLO https://github.com/kubernetes-sigs/kind/releases/download/v0.31.0/kind-linux-amd64.sha256sum\nsha256sum --check kind-linux-amd64.sha256sum && sudo install -m 0755 kind-linux-amd64 /usr/local/bin/kind\n# Stop if download, checksum or installation fails.\nkind version",
+      code: '(\n  install_dir=$(mktemp -d) &&\n  cd "$install_dir" &&\ncurl -fLO https://github.com/kubernetes-sigs/kind/releases/download/v0.31.0/kind-linux-amd64 &&\ncurl -fLO https://github.com/kubernetes-sigs/kind/releases/download/v0.31.0/kind-linux-amd64.sha256sum &&\nsha256sum --check kind-linux-amd64.sha256sum && sudo install -m 0755 kind-linux-amd64 /usr/local/bin/kind &&\nkind version\n)',
     },
     {
       type: "code",
       lang: "bash",
       title: "macOS (Homebrew)",
-      code: "brew install kind\nkind version",
+      code: "brew install kind &&\nkind version",
     },
     {
       type: "callout",
@@ -189,8 +189,8 @@ export const setupKind: Chapter = {
     {
       type: "p",
       text: {
-        en: "Later chapters on scheduling and DaemonSets are clearer with real worker nodes. save the next block as kind-multi.yaml in your current directory before running the creation command. Do not reuse an existing k8s-multi cluster:",
-        fr: "Les chapitres sur l'ordonnancement et les DaemonSets sont plus parlants avec de vrais workers. enregistrez le bloc suivant dans kind-multi.yaml dans votre répertoire courant avant la commande de création. Ne réutilisez pas un cluster k8s-multi existant :",
+        en: "Later chapters on scheduling and DaemonSets are clearer with real worker nodes. Save the next block as kind-multi.yaml in your current directory before running the creation command. Do not reuse an existing k8s-multi cluster:",
+        fr: "Les chapitres sur l'ordonnancement et les DaemonSets sont plus parlants avec de vrais workers. Enregistrez le bloc suivant dans kind-multi.yaml dans votre répertoire courant avant la commande de création. Ne réutilisez pas un cluster k8s-multi existant :",
       },
     },
     {
@@ -202,7 +202,7 @@ export const setupKind: Chapter = {
     {
       type: "code",
       lang: "bash",
-      code: "kind create cluster --name k8s-multi --image kindest/node:v1.35.0 --config kind-multi.yaml\nkubectl --context kind-k8s-multi get nodes",
+      code: "LAB_MULTI_UID=\nmulti_clusters=$(kind get clusters) &&\n  if printf '%s\\n' \"$multi_clusters\" | grep -Fxq k8s-multi; then\n    printf 'Refusing to reuse an existing k8s-multi cluster.\\n' >&2\n    false\n  else\n    kind create cluster --name k8s-multi --image kindest/node:v1.35.0 --config kind-multi.yaml &&\n      LAB_MULTI_UID=$(kubectl --context kind-k8s-multi get namespace kube-system -o jsonpath='{.metadata.uid}') &&\n      test -n \"$LAB_MULTI_UID\" &&\n      kubectl --context kind-k8s-multi get nodes\n  fi",
     },
     {
       type: "callout",
@@ -221,8 +221,8 @@ export const setupKind: Chapter = {
         fr: "Supprimer seulement vos clusters d’exercice",
       },
       text: {
-        en: "Deleting a cluster destroys all its namespaces and local data. Keep k8s-lab while other beginner chapters use it; delete k8s-multi or scratch only if you created them for these optional exercises.",
-        fr: "Supprimer un cluster détruit tous ses namespaces et données locales. Gardez k8s-lab pour les autres cours débutants ; retirez k8s-multi ou scratch seulement si vous les avez créés pour ces exercices optionnels.",
+        en: "Deleting a cluster destroys all its namespaces and local data. Keep k8s-lab while other beginner chapters use it; delete k8s-multi or scratch only if you created them for these optional exercises. Keep the terminal that recorded the cluster UID for cleanup.",
+        fr: "Supprimer un cluster détruit tous ses namespaces et données locales. Gardez k8s-lab pour les autres cours débutants ; retirez k8s-multi ou scratch seulement si vous les avez créés pour ces exercices optionnels. Gardez le terminal où l’UID a été enregistré pour le nettoyage.",
       },
     },
     {
@@ -233,7 +233,7 @@ export const setupKind: Chapter = {
     {
       type: "code",
       lang: "bash",
-      code: "kind get clusters\nkubectl config get-contexts\nkind delete cluster --name k8s-multi",
+      code: 'test -n "${LAB_MULTI_UID:-}" &&\n  current_uid=$(kubectl --context kind-k8s-multi get namespace kube-system -o jsonpath=\'{.metadata.uid}\') &&\n  test "$current_uid" = "$LAB_MULTI_UID" &&\n  kind delete cluster --name k8s-multi',
     },
     {
       type: "challenge",
@@ -256,7 +256,24 @@ export const setupKind: Chapter = {
         {
           type: "code",
           lang: "bash",
-          code: "kind get clusters\n# Continue only if scratch is absent.\nkind create cluster --name scratch --image kindest/node:v1.35.0\nkubectl --context kind-scratch create deployment web --image=nginx:1.27\nkubectl --context kind-scratch get deployment web\nkubectl config use-context kind-k8s-lab\nkubectl --context kind-k8s-lab get deployment web  # expected NotFound in an otherwise empty lab\nkubectl --context kind-scratch get deployment web\nkind delete cluster --name scratch\nkubectl config current-context",
+          code: "LAB_SCRATCH_UID=\nscratch_clusters=$(kind get clusters) &&\n  if printf '%s\\n' \"$scratch_clusters\" | grep -Fxq scratch; then\n    printf 'Refusing to reuse an existing scratch cluster.\\n' >&2\n    false\n  else\n    kind create cluster --name scratch --image kindest/node:v1.35.0 &&\n      LAB_SCRATCH_UID=$(kubectl --context kind-scratch get namespace kube-system -o jsonpath='{.metadata.uid}') &&\n      test -n \"$LAB_SCRATCH_UID\" &&\n      kubectl --context kind-scratch create deployment web --image=nginx:1.27 &&\n      kubectl --context kind-scratch get deployment web &&\n      kubectl config use-context kind-k8s-lab\n  fi",
+        },
+        {
+          type: "p",
+          text: {
+            en: "Continue only after setup succeeds. The next command should report NotFound in an otherwise empty k8s-lab. Then verify that scratch has the Deployment. Keep the same terminal for cleanup.",
+            fr: "Continuez uniquement si la préparation réussit. La commande suivante doit afficher NotFound dans un cluster k8s-lab autrement vide. Vérifiez ensuite que scratch possède le Deployment. Gardez le même terminal pour le nettoyage.",
+          },
+        },
+        {
+          type: "code",
+          lang: "bash",
+          code: "kubectl --context kind-k8s-lab get deployment web\nkubectl --context kind-scratch get deployment web",
+        },
+        {
+          type: "code",
+          lang: "bash",
+          code: 'if [ -n "${LAB_SCRATCH_UID:-}" ] &&\n  [ "$(kubectl --context kind-scratch get namespace kube-system -o jsonpath=\'{.metadata.uid}\')" = "$LAB_SCRATCH_UID" ]; then\n  kind delete cluster --name scratch && kubectl config current-context\nelse\n  printf \'Refusing to delete a cluster not recorded by this exercise.\\n\' >&2\n  false\nfi',
         },
         {
           type: "p",

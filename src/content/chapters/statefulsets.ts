@@ -68,6 +68,7 @@ export const statefulsets: Chapter = {
         "StatefulSet crée des identités et des volumes individuels ; il ne copie pas les données applicatives, n’élit pas de leader, n’implémente pas de consensus et ne sauvegarde rien. Nos deux serveurs HTTP stockent volontairement des fichiers différents. Un cluster kind sur un portable partage aussi un domaine de panne physique. C’est une expérience d’identité, pas une preuve de haute disponibilité.",
       ),
     ),
+    { type: "diagram", name: "statefulset-identity" },
     ...labContext("lab-stateful"),
     h("storage-check", "Verify the storage prerequisite", "Vérifier le prérequis de stockage"),
     code(
@@ -123,7 +124,7 @@ export const statefulsets: Chapter = {
         title: l("Create and compare the replicas", "Créer et comparer les réplicas"),
         code: {
           lang: "bash",
-          code: "k -n lab-stateful apply -f lab/level-2/statefulsets/notebook.yaml\nk -n lab-stateful rollout status statefulset/notebook --timeout=180s\nk -n lab-stateful get pods,pvc -o wide\nk -n lab-stateful exec notebook-0 -- cat /data/identity.txt\nk -n lab-stateful exec notebook-1 -- cat /data/identity.txt\nk -n lab-stateful exec notebook-1 -- wget -qO- http://notebook-0.notebook.lab-stateful.svc.cluster.local:8080/identity.txt",
+          code: "k -n lab-stateful apply -f lab/level-2/statefulsets/notebook.yaml &&\nk -n lab-stateful rollout status statefulset/notebook --timeout=180s &&\nk -n lab-stateful get pods,pvc -o wide &&\nk -n lab-stateful exec notebook-0 -- cat /data/identity.txt &&\nk -n lab-stateful exec notebook-1 -- cat /data/identity.txt &&\nk -n lab-stateful exec notebook-1 -- wget -qO- http://notebook-0.notebook.lab-stateful.svc.cluster.local:8080/identity.txt",
         },
         explain: l(
           "Watch Pods in a second terminal during creation if you want to see the order. The two files identify different creators. The request from notebook-1 resolves notebook-0 through the headless Service, rather than reading notebook-1's local file.",
@@ -143,7 +144,7 @@ export const statefulsets: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "k -n lab-stateful get pod notebook-0 -o jsonpath='{.metadata.uid}{\"\\n\"}'\nk -n lab-stateful delete pod notebook-0\nk -n lab-stateful wait --for=create pod/notebook-0 --timeout=120s\nk -n lab-stateful wait --for=condition=Ready pod/notebook-0 --timeout=120s\nk -n lab-stateful get pod notebook-0 -o jsonpath='{.metadata.uid}{\"\\n\"}'\nk -n lab-stateful exec notebook-0 -- cat /data/identity.txt\nk -n lab-stateful get pvc data-notebook-0 -o wide",
+          code: "k -n lab-stateful get pod notebook-0 -o jsonpath='{.metadata.uid}{\"\\n\"}' &&\nk -n lab-stateful delete pod notebook-0 &&\nk -n lab-stateful wait --for=create pod/notebook-0 --timeout=120s &&\nk -n lab-stateful wait --for=condition=Ready pod/notebook-0 --timeout=120s &&\nk -n lab-stateful get pod notebook-0 -o jsonpath='{.metadata.uid}{\"\\n\"}' &&\nk -n lab-stateful exec notebook-0 -- cat /data/identity.txt &&\nk -n lab-stateful get pvc data-notebook-0 -o wide",
         },
         explain: l(
           "Record the first UID and file timestamp before deletion. The replacement should have a new UID while the initial timestamp and PVC remain. Normal deletion waits for termination. The separate create wait handles the interval before the controller recreates the Pod; Ready can then be awaited. Do not add force deletion to accelerate the exercise.",
@@ -157,7 +158,7 @@ export const statefulsets: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "k -n lab-stateful set env statefulset/notebook RELEASE=two\nk -n lab-stateful rollout status statefulset/notebook --timeout=180s\nk -n lab-stateful get statefulset notebook -o yaml",
+          code: "k -n lab-stateful set env statefulset/notebook RELEASE=two &&\nk -n lab-stateful rollout status statefulset/notebook --timeout=180s &&\nk -n lab-stateful get statefulset notebook -o yaml",
         },
         explain: l(
           "RELEASE changes the template without changing the HTTP server. Under the default rolling strategy, higher ordinals update before lower ones, with readiness gating progress. Inspect currentRevision and updateRevision. minReadySeconds adds a brief continuous-ready requirement.",
@@ -266,7 +267,7 @@ export const statefulsets: Chapter = {
       [
         code(
           "bash",
-          "k -n lab-stateful exec notebook-1 -- cat /data/identity.txt\nk -n lab-stateful get pod notebook-1 -o jsonpath='{.metadata.uid}{\"\\n\"}'\nk -n lab-stateful get pvc data-notebook-1 -o wide\nk -n lab-stateful scale statefulset/notebook --replicas=1\nk -n lab-stateful wait --for=delete pod/notebook-1 --timeout=120s\nk -n lab-stateful get pvc\nk -n lab-stateful scale statefulset/notebook --replicas=2\nk -n lab-stateful rollout status statefulset/notebook --timeout=180s\nk -n lab-stateful get pod notebook-1 -o jsonpath='{.metadata.uid}{\"\\n\"}'\nk -n lab-stateful get pvc data-notebook-1 -o wide\nk -n lab-stateful exec notebook-1 -- cat /data/identity.txt",
+          "k -n lab-stateful exec notebook-1 -- cat /data/identity.txt &&\nk -n lab-stateful get pod notebook-1 -o jsonpath='{.metadata.uid}{\"\\n\"}' &&\nk -n lab-stateful get pvc data-notebook-1 -o wide &&\nk -n lab-stateful scale statefulset/notebook --replicas=1 &&\nk -n lab-stateful wait --for=delete pod/notebook-1 --timeout=120s &&\nk -n lab-stateful get pvc &&\nk -n lab-stateful scale statefulset/notebook --replicas=2 &&\nk -n lab-stateful rollout status statefulset/notebook --timeout=180s &&\nk -n lab-stateful get pod notebook-1 -o jsonpath='{.metadata.uid}{\"\\n\"}' &&\nk -n lab-stateful get pvc data-notebook-1 -o wide &&\nk -n lab-stateful exec notebook-1 -- cat /data/identity.txt",
         ),
         p(
           "The returning ordinal uses data-notebook-1, preserving the original file timestamp. Its UID changes because it is a newly created Pod. No disk, node or laptop was lost, so the experiment proves a control-plane lifecycle property and reuse of existing local storage only.",
@@ -285,7 +286,7 @@ export const statefulsets: Chapter = {
     ),
     code(
       "bash",
-      "k -n lab-stateful scale statefulset/notebook --replicas=0\nk -n lab-stateful wait --for=delete pod -l app=stateful-notebook --timeout=120s\nk -n lab-stateful get pvc -o custom-columns='CLAIM:.metadata.name,PV:.spec.volumeName'\nk delete namespace lab-stateful",
+      "k -n lab-stateful scale statefulset/notebook --replicas=0 &&\nk -n lab-stateful wait --for=delete pod -l app=stateful-notebook --timeout=120s &&\nk -n lab-stateful get pvc -o custom-columns='CLAIM:.metadata.name,PV:.spec.volumeName' &&\nk delete namespace lab-stateful",
     ),
   ],
 };

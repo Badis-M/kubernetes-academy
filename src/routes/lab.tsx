@@ -5,18 +5,35 @@ import { RichText } from "@/components/academy/RichText";
 import { useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/lab")({
-  head: () => ({
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
+  head: ({ match }) => ({
     meta: [
-      { title: "Guided lab: deploy a FastAPI app on kind — Kubernetes Academy" },
+      {
+        title:
+          match.search.lang === "fr"
+            ? "Lab guidé : déployer une API FastAPI sur kind — Kubernetes Academy"
+            : "Guided lab: deploy a FastAPI app on kind — Kubernetes Academy",
+      },
       {
         name: "description",
         content:
-          "Build a Docker image, create a kind cluster, load the image and apply Namespace, Deployment and Service manifests step by step.",
+          match.search.lang === "fr"
+            ? "Construire une image Docker, créer un cluster kind et appliquer les manifests Namespace, Deployment et Service étape par étape."
+            : "Build a Docker image, create a kind cluster, load the image and apply Namespace, Deployment and Service manifests step by step.",
       },
-      { property: "og:title", content: "Guided Kubernetes lab on kind" },
+      {
+        property: "og:title",
+        content:
+          match.search.lang === "fr"
+            ? "Lab guidé : déployer une API FastAPI sur kind — Kubernetes Academy"
+            : "Guided Kubernetes lab on kind",
+      },
       {
         property: "og:description",
-        content: "From a FastAPI app to a running Deployment and Service on a local cluster.",
+        content:
+          match.search.lang === "fr"
+            ? "Construire une image Docker, créer un cluster kind et appliquer les manifests Namespace, Deployment et Service étape par étape."
+            : "From a FastAPI app to a running Deployment and Service on a local cluster.",
       },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -59,7 +76,7 @@ function LabPage() {
 
       <ol className="prose-lesson mt-12 space-y-12">
         {labSteps.map((s) => (
-          <li key={s.number} className="relative">
+          <li key={s.number} id={`step-${s.number}`} className="relative scroll-mt-36">
             <div className="flex items-baseline gap-3">
               <span className="font-mono text-sm text-primary">{s.number}</span>
               <h2 className="text-xl font-semibold text-foreground">{tr(s.title)}</h2>
@@ -68,6 +85,14 @@ function LabPage() {
               <span className="text-foreground">{tr(s.goal)}</span>{" "}
               <span className="text-muted-foreground">{tr(s.why)}</span>
             </p>
+            {"preflight" in s && s.preflight && (
+              <>
+                <p className="!text-[15px]">
+                  <RichText text={tr(s.preflight.instruction)} />
+                </p>
+                <CodeBlock code={s.preflight.command} lang="bash" />
+              </>
+            )}
             <CodeBlock code={s.command} lang="bash" />
             <p className="!text-[15px]">
               <RichText text={tr(s.explanation)} />

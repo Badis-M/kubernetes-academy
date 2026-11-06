@@ -7,6 +7,9 @@ import {
   note,
   list,
   labContext,
+  requireOwnedNamespace,
+  requireResourceUid,
+  requireAbsentResource,
   steps,
   quiz,
   question,
@@ -56,6 +59,7 @@ export const gitops: Chapter = {
       "GitOps continuously compares a declared versioned state with observed API resources. CI usually builds and tests artifacts; the GitOps controller fetches approved inputs and reconciles them using its cluster credentials. A successful Git push proves only repository acceptance, not rendering, API admission or runtime health. Trace a specific commit through each stage. A webhook can reduce fetch latency but does not replace reconciliation or make delivery instantaneous.",
       "GitOps compare continuellement un état déclaré et versionné aux ressources API observées. La CI construit et teste généralement les artefacts ; le contrôleur GitOps récupère les entrées approuvées et les réconcilie avec ses identifiants cluster. Un push réussi prouve seulement l’acceptation du dépôt, pas rendu, admission ou santé. Suivez un commit précis à chaque étape. Un webhook peut réduire la latence de lecture sans remplacer la réconciliation ni rendre la livraison instantanée.",
     ),
+    { type: "diagram", name: "gitops-reconciliation" },
     {
       type: "table",
       head: [l("Responsibility", "Responsabilité"), l("Argo CD", "Argo CD"), l("Flux", "Flux")],
@@ -128,7 +132,7 @@ export const gitops: Chapter = {
       "Run configuration generation only after your reviewed commit containing the exercise has been pushed by you. If origin uses SSH, supply the equivalent credential-free HTTPS Git URL instead; the generator rejects embedded credentials and invalid SHAs. It writes temporary Argo/Flux files without contacting a remote or proving that the commit exists there. Keep these variables in the same shell. Existing outputs are refused: create a new private directory for each reviewed revision. Full commit pinning prevents a moving branch from changing this lesson's input unexpectedly; promotion requires updating the pin explicitly.",
       "Générez la configuration seulement après avoir vous-même poussé le commit examiné contenant l’exercice. Si origin utilise SSH, fournissez l’URL Git HTTPS équivalente sans identifiants ; le générateur refuse credentials intégrés et SHA invalides. Il écrit des fichiers temporaires sans contacter de serveur ni prouver la présence distante du commit. Gardez ces variables dans le même shell. Les sorties existantes sont refusées : créez un nouveau répertoire privé par révision examinée. Le SHA complet empêche une branche mobile de changer silencieusement l’entrée ; une promotion exige de modifier ce pin explicitement.",
     ),
-    ...labContext("lab-gitops-argo"),
+    ...labContext("lab-gitops-argo", "LAB_GITOPS_ARGO_UID"),
     h(
       "argo",
       "Argo CD: source, destination and policy",
@@ -142,11 +146,22 @@ export const gitops: Chapter = {
       ),
       code: {
         lang: "bash",
-        code: 'k get crd applications.argoproj.io appprojects.argoproj.io\nk -n argocd get deployments,statefulsets\nk apply -f "$LAB_GITOPS_OUTPUT_DIR/argocd.yaml"\nk -n argocd get application academy-lab -o yaml\nk -n lab-gitops-argo get deployment,service,configmap',
+        code: `LAB_ARGO_PROJECT_UID=
+LAB_ARGO_APPLICATION_UID=
+${requireOwnedNamespace("lab-gitops-argo", "LAB_GITOPS_ARGO_UID")} &&
+  k get crd applications.argoproj.io appprojects.argoproj.io &&
+  ${requireAbsentResource("appprojects.argoproj.io -n argocd", "academy-lab")} &&
+  ${requireAbsentResource("applications.argoproj.io -n argocd", "academy-lab")} &&
+  LAB_ARGO_PROJECT_UID=$(k create -f "$LAB_GITOPS_OUTPUT_DIR/argo-project.yaml" -o jsonpath='{.metadata.uid}') &&
+  test -n "$LAB_ARGO_PROJECT_UID" &&
+  LAB_ARGO_APPLICATION_UID=$(k create -f "$LAB_GITOPS_OUTPUT_DIR/argo-application.yaml" -o jsonpath='{.metadata.uid}') &&
+  test -n "$LAB_ARGO_APPLICATION_UID" &&
+  k -n argocd get application academy-lab -o yaml &&
+  k -n lab-gitops-argo get deployment,service,configmap`,
       },
       explain: l(
-        "Stop on missing CRDs or an unavailable stack. Inspect the Application's sync revision, sync status, health and conditions. Automated selfHeal repairs live drift; prune removes previously managed objects absent from the source, while allowEmpty: false guards against automatically emptying the entire app.",
-        "Arrêtez-vous si CRD ou pile manquent. Inspectez révision synchronisée, sync, health et conditions de l’Application. selfHeal répare la dérive réelle ; prune retire les objets auparavant gérés absents de la source, tandis que allowEmpty: false protège contre un vidage automatique complet.",
+        "Verify the Argo controller stack is available first. The block refuses existing project/application names and captures each successful create UID. Keep this shell; after partial failure, inspect the objects and use only the matching cleanup below. UID checks are not a transaction: do not share these lab names concurrently. Inspect the Application's sync revision, sync status, health and conditions. Automated selfHeal repairs live drift; prune removes previously managed objects absent from the source, while allowEmpty: false guards against automatically emptying the entire app.",
+        "Vérifiez d’abord la disponibilité de la pile Argo. Le bloc refuse les noms de projet/application existants et conserve chaque UID créé. Gardez ce shell ; après échec partiel, examinez les objets puis utilisez seulement le nettoyage correspondant ci-dessous. Ces contrôles ne sont pas une transaction : ne partagez pas ces noms simultanément. Inspectez révision synchronisée, sync, health et conditions de l’Application. selfHeal répare la dérive réelle ; prune retire les objets auparavant gérés absents de la source, tandis que allowEmpty: false protège contre un vidage automatique complet.",
       ),
       expected: {
         text: l(
@@ -168,7 +183,7 @@ export const gitops: Chapter = {
       ),
       code: {
         lang: "bash",
-        code: 'k get crd gitrepositories.source.toolkit.fluxcd.io kustomizations.kustomize.toolkit.fluxcd.io\nk -n flux-system get deployments\nk create namespace lab-gitops-flux\nk apply -f lab/level-3/gitops/flux-rbac.yaml\nk apply -f "$LAB_GITOPS_OUTPUT_DIR/flux.yaml"\nk -n lab-gitops-flux wait --for=condition=Ready gitrepository/academy-source --timeout=120s\nk -n lab-gitops-flux wait --for=condition=Ready kustomizations.kustomize.toolkit.fluxcd.io/academy-lab --timeout=180s\nk -n lab-gitops-flux get gitrepositories,kustomizations -o yaml\nk -n lab-gitops-flux get deployment,service,configmap',
+        code: 'LAB_GITOPS_FLUX_UID=\ntest -f "${LAB_GITOPS_OUTPUT_DIR:?Generate the Flux configuration first}/flux.yaml" &&\n  k get crd gitrepositories.source.toolkit.fluxcd.io kustomizations.kustomize.toolkit.fluxcd.io &&\n  k -n flux-system rollout status deployment/source-controller --timeout=120s &&\n  k -n flux-system rollout status deployment/kustomize-controller --timeout=120s &&\n  LAB_GITOPS_FLUX_UID=$(k create namespace lab-gitops-flux -o jsonpath=\'{.metadata.uid}\') &&\n  test -n "$LAB_GITOPS_FLUX_UID" &&\n  k apply -f lab/level-3/gitops/flux-rbac.yaml &&\n  k apply -f "$LAB_GITOPS_OUTPUT_DIR/flux.yaml" &&\n  k -n lab-gitops-flux wait --for=condition=Ready gitrepository/academy-source --timeout=120s &&\n  k -n lab-gitops-flux wait --for=condition=Ready kustomizations.kustomize.toolkit.fluxcd.io/academy-lab --timeout=180s &&\n  k -n lab-gitops-flux get gitrepositories,kustomizations -o yaml &&\n  k -n lab-gitops-flux get deployment,service,configmap',
       },
       explain: l(
         "The source's Ready condition proves retrieval, not application readiness. The Kustomization checks the artifact path, applies through gitops-applier and waits for workload health. targetNamespace must already exist; the restricted identity cannot create it. Here Kustomization is a Flux API object, distinct from the local Kustomize build file.",
@@ -285,8 +300,8 @@ export const gitops: Chapter = {
       ],
       [
         p(
-          "Review the bad change, create and push a revert commit yourself, render that commit's app and validate it. Regenerate temporary configuration with the new full SHA and apply only the chosen controller path. Verify observed revision, health and an HTTP request independently. The controller may undo a live rollout undo because Git still requests the bad template. Manifest recovery does not reverse data migrations; follow a separately tested data recovery plan if needed. During an emergency, pause the appropriate reconciler deliberately and document resumption rather than leaving two competing desired states.",
-          "Examinez le changement, créez et poussez vous-même un commit de revert, rendez son application et validez-la. Régénérez la configuration avec le nouveau SHA complet et appliquez seulement le parcours choisi. Vérifiez séparément révision observée, santé et requête HTTP. Le contrôleur peut annuler un rollout undo réel puisque Git demande encore le mauvais template. Récupérer les manifests n’annule pas les migrations ; suivez un plan de données testé séparément si nécessaire. En urgence, suspendez explicitement le bon réconciliateur et documentez sa reprise plutôt que de laisser deux états désirés concurrents.",
+          "Review the bad change, create and push a revert commit yourself, render that commit's app and validate it. Regenerate temporary configuration with the new full SHA and update only the chosen controller path after verifying its recorded namespace and control-object UIDs. Verify observed revision, health and an HTTP request independently. The controller may undo a live rollout undo because Git still requests the bad template. Manifest recovery does not reverse data migrations; follow a separately tested data recovery plan if needed. During an emergency, pause the appropriate reconciler deliberately and document resumption rather than leaving two competing desired states.",
+          "Examinez le changement, créez et poussez vous-même un commit de revert, rendez son application et validez-la. Régénérez la configuration avec le nouveau SHA complet et actualisez seulement le parcours choisi après vérification des UID enregistrés de son namespace et de ses objets de contrôle. Vérifiez séparément révision observée, santé et requête HTTP. Le contrôleur peut annuler un rollout undo réel puisque Git demande encore le mauvais template. Récupérer les manifests n’annule pas les migrations ; suivez un plan de données testé séparément si nécessaire. En urgence, suspendez explicitement le bon réconciliateur et documentez sa reprise plutôt que de laisser deux états désirés concurrents.",
         ),
         code(
           "bash",
@@ -300,16 +315,31 @@ export const gitops: Chapter = {
       "Détacher la réconciliation avant de supprimer sa cible",
     ),
     p(
-      "Run only the cleanup for paths you installed. This Argo Application has no cascading deletion finalizer, and Flux explicitly uses deletionPolicy: Orphan: deleting those control objects leaves the app for the subsequent deliberate namespace deletion. Neither path manages its controller installation. Shared CRDs, cluster roles and the controller stack remain administrator-owned; never delete them merely to clean this app lab. If you created the preparation namespace but skipped Argo, remove that empty dedicated namespace too.",
-      "Nettoyez seulement les parcours installés. Cette Application Argo n’a pas de finalizer de suppression en cascade et Flux utilise deletionPolicy: Orphan : supprimer ces objets laisse l’application pour la suppression explicite du namespace ensuite. Aucun parcours ne gère l’installation du contrôleur. CRD, rôles de cluster et pile partagés restent sous responsabilité administrateur ; ne les supprimez pas pour nettoyer ce lab applicatif. Si vous avez créé le namespace de préparation sans utiliser Argo, retirez aussi cet espace dédié vide.",
+      "Run only the cleanup for paths you installed. Keep the same terminal for both paths so cleanup can verify the captured UIDs. This Argo Application has no cascading deletion finalizer, and Flux explicitly uses deletionPolicy: Orphan: deleting those control objects leaves the app for the subsequent deliberate namespace deletion. Neither path manages its controller installation. Shared CRDs, cluster roles and the controller stack remain administrator-owned; never delete them merely to clean this app lab. If you created the preparation namespace but skipped Argo, remove that empty dedicated namespace too.",
+      "Nettoyez seulement les parcours installés. Gardez le même terminal pour les deux parcours afin de vérifier les UID enregistrés au nettoyage. Cette Application Argo n’a pas de finalizer de suppression en cascade et Flux utilise deletionPolicy: Orphan : supprimer ces objets laisse l’application pour la suppression explicite du namespace ensuite. Aucun parcours ne gère l’installation du contrôleur. CRD, rôles de cluster et pile partagés restent sous responsabilité administrateur ; ne les supprimez pas pour nettoyer ce lab applicatif. Si vous avez créé le namespace de préparation sans utiliser Argo, retirez aussi cet espace dédié vide.",
     ),
     code(
       "bash",
-      "# Argo cleanup: run only if you installed this path.\nk -n argocd delete application academy-lab\nk -n argocd delete appproject academy-lab\nk delete namespace lab-gitops-argo",
+      `${requireOwnedNamespace("lab-gitops-argo", "LAB_GITOPS_ARGO_UID")} &&
+  ${requireResourceUid("applications.argoproj.io -n argocd", "academy-lab", "LAB_ARGO_APPLICATION_UID")} &&
+  k -n argocd delete application academy-lab --wait=true --timeout=120s`,
+    ),
+    p(
+      "Continue only after the Application has disappeared. If its creation failed, this next block can clean the owned project only when no Application with that name exists. A foreign Application blocks it.",
+      "Poursuivez seulement après disparition de l’Application. Si sa création a échoué, le bloc suivant peut nettoyer le projet détenu uniquement en l’absence d’une Application de ce nom. Une Application étrangère le bloque.",
     ),
     code(
       "bash",
-      "# Flux cleanup: run only if you installed this path.\nk -n lab-gitops-flux delete kustomizations.kustomize.toolkit.fluxcd.io academy-lab\nk -n lab-gitops-flux delete gitrepository academy-source\nk delete namespace lab-gitops-flux",
+      `${requireOwnedNamespace("lab-gitops-argo", "LAB_GITOPS_ARGO_UID")} &&
+  ${requireAbsentResource("applications.argoproj.io -n argocd", "academy-lab")} &&
+  ${requireResourceUid("appprojects.argoproj.io -n argocd", "academy-lab", "LAB_ARGO_PROJECT_UID")} &&
+  k -n argocd delete appproject academy-lab --wait=true --timeout=120s &&
+  k delete namespace lab-gitops-argo --wait=true --timeout=120s`,
+    ),
+    code(
+      "bash",
+      requireOwnedNamespace("lab-gitops-flux", "LAB_GITOPS_FLUX_UID") +
+        " &&\n  k -n lab-gitops-flux delete kustomizations.kustomize.toolkit.fluxcd.io academy-lab --ignore-not-found &&\n  k -n lab-gitops-flux delete gitrepository academy-source --ignore-not-found &&\n  k delete namespace lab-gitops-flux",
     ),
     p(
       "The printed configuration directories are local artifacts, separate from cluster cleanup. Inspect them and manually remove only the temporary copies created by this exercise. Controller installations remain administrator-owned.",

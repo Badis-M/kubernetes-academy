@@ -47,7 +47,7 @@ export const rolloutStrategies: Chapter = {
     ),
     p(
       "For three desired replicas, maxSurge: 1 allows one extra non-terminating Pod and maxUnavailable: 0 asks the controller to retain three available replicas during its rollout. Terminating Pods may temporarily consume additional resources. With percentages, surge rounds up and unavailable rounds down. The two budgets cannot both be zero.",
-      "Pour trois réplicas désirés, maxSurge: 1 autorise un Pod supplémentaire non terminé et maxUnavailable: 0 demande au contrôleur de conserver trois réplicas disponibles pendant son rollout. Des Pods en cours de terminaison peuvent temporairement consommer davantage de ressources. Pour les pourcentages, surge est arrondi au supérieur et unavailable à l’inférieur. Les deux budgets ne peuvent pas être simultanément nuls.",
+      "Pour trois réplicas désirés, maxSurge: 1 autorise un Pod supplémentaire hors terminaison et maxUnavailable: 0 demande au contrôleur de conserver trois réplicas disponibles pendant son rollout. Des Pods en cours de terminaison peuvent temporairement consommer davantage de ressources. Pour les pourcentages, surge est arrondi au supérieur et unavailable à l’inférieur. Les deux budgets ne peuvent pas être simultanément nuls.",
     ),
     note(
       "warn",
@@ -57,6 +57,19 @@ export const rolloutStrategies: Chapter = {
         "La readiness doit refléter la capacité réelle à servir, surge nécessite des ressources disponibles et l’arrêt doit terminer les connexions existantes. Ces champs ne protègent ni d’une perte de nœud, ni d’un mauvais sélecteur de Service, ni de versions incompatibles.",
       ),
     ),
+    {
+      type: "callout",
+      tone: "info",
+      title: l("Switch to the Level 2 lab cluster", "Passer au cluster du niveau 2"),
+      text: l(
+        "If you followed the Level 1 setup, you created `k8s-lab`. From here, the exercises use the separate three-node `k8s-ops-lab` cluster and its `kind-k8s-ops-lab` context. Prepare it once using step 03 of the guided lab. You can keep your Level 1 cluster.",
+        "Si vous avez suivi l’installation du niveau 1, vous avez créé `k8s-lab`. À partir d’ici, les exercices utilisent un autre cluster à trois nœuds, `k8s-ops-lab`, et son contexte `kind-k8s-ops-lab`. Préparez-le une seule fois avec l’étape 03 du lab guidé. Vous pouvez conserver le cluster du niveau 1.",
+      ),
+      link: {
+        href: "/lab#step-03",
+        label: l("Open step 03 of the guided lab", "Ouvrir l’étape 03 du lab guidé"),
+      },
+    },
     ...labContext("lab-rollout"),
     h("manifest", "Inspect the rollout contract", "Examiner le contrat du rollout"),
     code("yaml", manifest, "lab/level-2/rollout-strategies/web.yaml"),
@@ -122,7 +135,7 @@ export const rolloutStrategies: Chapter = {
       question(
         l(
           "Three replicas and maxSurge: 25% allow how many additional non-terminating Pods?",
-          "Trois réplicas et maxSurge: 25% autorisent combien de Pods supplémentaires non terminés ?",
+          "Trois réplicas et maxSurge: 25% autorisent combien de Pods supplémentaires hors terminaison ?",
         ),
         [l("Zero", "Zéro"), l("One", "Un"), l("Three", "Trois")],
         1,

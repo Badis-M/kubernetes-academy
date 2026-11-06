@@ -7,6 +7,7 @@ import {
   note,
   list,
   labContext,
+  requireResourceUid,
   steps,
   quiz,
   question,
@@ -62,7 +63,11 @@ export const daemonsets: Chapter = {
         "Les Pods de DaemonSet reçoivent des tolérances automatiques pour des conditions comme not-ready, unreachable, les pressions et unschedulable. Cette dernière permet aux agents de fonctionner sur un nœud cordonné ; cordon n’est pas une commande d’arrêt des agents. Ces valeurs ne donnent pas une tolérance générale aux taints personnalisés ni au NoSchedule du control-plane. Examinez le Pod réel plutôt que de supposer que le template énumère toutes ses tolérances effectives.",
       ),
     ),
-    ...labContext("lab-daemon"),
+    ...labContext("lab-daemon", "LAB_DAEMON_NS_UID"),
+    p(
+      "Python 3 is required for lab/scripts/node-metadata.py. It uses only the explicit kind-k8s-ops-lab context, refuses existing keys and checks the Node UID, current value and resourceVersion before removal. Keep this shell open and record each successful addition. Stop on any failure; for partial setup, clean up only additions whose UID was recorded. Do not reuse these exercise keys concurrently.",
+      "Python 3 est nécessaire pour lab/scripts/node-metadata.py. Il cible uniquement kind-k8s-ops-lab, refuse les clés existantes et vérifie UID du Node, valeur actuelle et resourceVersion avant tout retrait. Gardez ce shell ouvert et conservez chaque ajout réussi. Arrêtez-vous en cas d’échec ; après une préparation partielle, nettoyez uniquement les ajouts dont l’UID a été enregistré. Ne partagez pas ces clés d’exercice simultanément.",
+    ),
     h(
       "manifest",
       "A deliberately unprivileged reporter",
@@ -115,7 +120,7 @@ export const daemonsets: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "k get nodes --show-labels\nk get nodes -L lab.k8svisual.dev/agent\nk -n lab-daemon apply -f lab/level-2/daemonsets/reporter.yaml\nk -n lab-daemon get daemonset node-reporter",
+          code: "k get nodes --show-labels &&\nk get nodes -L lab.k8svisual.dev/agent &&\nk -n lab-daemon apply -f lab/level-2/daemonsets/reporter.yaml &&\nk -n lab-daemon get daemonset node-reporter",
         },
         explain: l(
           "Use the one-control-plane, two-worker kind baseline. The dedicated label must be absent initially; if it belongs to another experiment, do not overwrite it. The listed worker names come from that cluster name. Adapt them only after inspecting your actual disposable nodes.",
@@ -132,7 +137,7 @@ export const daemonsets: Chapter = {
         title: l("Opt workers in one at a time", "Inscrire les workers un par un"),
         code: {
           lang: "bash",
-          code: "k label node k8s-ops-lab-worker lab.k8svisual.dev/agent=enabled\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s\nk -n lab-daemon get pods -o wide\nk label node k8s-ops-lab-worker2 lab.k8svisual.dev/agent=enabled\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s\nk -n lab-daemon get daemonset,pods -o wide\nk -n lab-daemon logs -l app=node-reporter --prefix=true --tail=3",
+          code: "LAB_DAEMON_WORKER_UID=$(python3 lab/scripts/node-metadata.py label-add k8s-ops-lab-worker lab.k8svisual.dev/agent enabled) &&\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s &&\nk -n lab-daemon get pods -o wide &&\nLAB_DAEMON_WORKER2_UID=$(python3 lab/scripts/node-metadata.py label-add k8s-ops-lab-worker2 lab.k8svisual.dev/agent enabled) &&\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s &&\nk -n lab-daemon get daemonset,pods -o wide &&\nk -n lab-daemon logs -l app=node-reporter --prefix=true --tail=3",
         },
         explain: l(
           "The desired population follows the selected node set from one to two. Compare each Pod's NODE column with its log value. No replicas field was changed.",
@@ -152,7 +157,7 @@ export const daemonsets: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "LAB_DAEMON_POD=$(k -n lab-daemon get pod -l app=node-reporter -o jsonpath='{.items[0].metadata.name}')\nk -n lab-daemon delete pod \"$LAB_DAEMON_POD\"\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s\nk label node k8s-ops-lab-worker2 lab.k8svisual.dev/agent-\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s\nk -n lab-daemon get pods -o wide",
+          code: 'LAB_DAEMON_POD=$(k -n lab-daemon get pod -l app=node-reporter -o jsonpath=\'{.items[0].metadata.name}\') &&\nk -n lab-daemon delete pod "$LAB_DAEMON_POD" &&\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s &&\npython3 lab/scripts/node-metadata.py label-remove k8s-ops-lab-worker2 lab.k8svisual.dev/agent enabled --uid "${LAB_DAEMON_WORKER2_UID:-}" &&\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s &&\nk -n lab-daemon get pods -o wide',
         },
         explain: l(
           "Deletion alone causes a replacement on the same intended node. Removing eligibility changes the desired set: that node's agent is removed rather than transferred as a second replica to the other worker. Node labels are cluster-scoped changes and require cleanup even though the DaemonSet is namespaced.",
@@ -257,7 +262,7 @@ export const daemonsets: Chapter = {
       [
         code(
           "bash",
-          `k describe node k8s-ops-lab-control-plane\nk label node k8s-ops-lab-control-plane lab.k8svisual.dev/agent=enabled\nk -n lab-daemon get daemonset,pods -o wide\nk -n lab-daemon patch daemonset node-reporter --type=merge -p '{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]}}}}'\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s\nk -n lab-daemon get pods -o wide`,
+          `k describe node k8s-ops-lab-control-plane &&\nLAB_DAEMON_CONTROL_UID=$(python3 lab/scripts/node-metadata.py label-add k8s-ops-lab-control-plane lab.k8svisual.dev/agent enabled) &&\nk -n lab-daemon get daemonset,pods -o wide &&\nk -n lab-daemon patch daemonset node-reporter --type=merge -p '{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]}}}}' &&\nk -n lab-daemon rollout status daemonset/node-reporter --timeout=120s &&\nk -n lab-daemon get pods -o wide`,
         ),
         p(
           "With worker2 still opted out, the final intended population is two: worker and control-plane. The patch also rolls the already eligible worker's Pod because it changes the template. To return to the original template, reapply reporter.yaml; to undo the entire exercise, remove both the namespace and its dedicated node labels below. Do not copy this control-plane permission into a production agent without reviewing its purpose and resource budget.",
@@ -272,8 +277,26 @@ export const daemonsets: Chapter = {
     ),
     code(
       "bash",
-      "k delete namespace lab-daemon\nk label nodes -l lab.k8svisual.dev/agent=enabled lab.k8svisual.dev/agent-\nk get nodes -L lab.k8svisual.dev/agent",
+      `${requireResourceUid("namespace", "lab-daemon", "LAB_DAEMON_NS_UID")} &&
+  k delete namespace lab-daemon --wait=true --timeout=120s`,
     ),
+    p(
+      "Run each removal below separately, only for an addition recorded in this shell. The worker2 removal also accepts an already absent key after the eligibility step. Skip the control-plane block if you did not run the challenge. A missing UID or changed value stops removal; never replace the UID with a newly discovered one to force cleanup.",
+      "Exécutez chaque retrait ci-dessous séparément, uniquement pour un ajout enregistré dans ce shell. Le retrait de worker2 accepte aussi une clé déjà absente après l’étape d’éligibilité. Ignorez le bloc control-plane si vous n’avez pas fait le défi. Un UID manquant ou une valeur modifiée bloque le retrait ; ne remplacez jamais l’UID par un nouvel UID pour forcer le nettoyage.",
+    ),
+    code(
+      "bash",
+      'python3 lab/scripts/node-metadata.py label-remove k8s-ops-lab-worker lab.k8svisual.dev/agent enabled --uid "${LAB_DAEMON_WORKER_UID:-}"',
+    ),
+    code(
+      "bash",
+      'python3 lab/scripts/node-metadata.py label-remove k8s-ops-lab-worker2 lab.k8svisual.dev/agent enabled --uid "${LAB_DAEMON_WORKER2_UID:-}"',
+    ),
+    code(
+      "bash",
+      'python3 lab/scripts/node-metadata.py label-remove k8s-ops-lab-control-plane lab.k8svisual.dev/agent enabled --uid "${LAB_DAEMON_CONTROL_UID:-}"',
+    ),
+    code("bash", "k get nodes -L lab.k8svisual.dev/agent"),
     p(
       "Expected: no exercise value remains on the nodes. This lesson demonstrates reconciliation and placement on existing nodes, not cluster autoscaling, host observability or multi-host resilience. The reporter's Ready state only reflects its simple container lifecycle; a real agent needs a meaningful health and delivery contract.",
       "Attendu : aucune valeur d’exercice ne reste sur les nœuds. Ce chapitre démontre réconciliation et placement sur des nœuds existants, pas autoscaling du cluster, observabilité hôte ou résilience multi-hôte. Le Ready du rapporteur reflète seulement son cycle de vie simple ; un agent réel nécessite un contrat de santé et de livraison pertinent.",

@@ -47,7 +47,7 @@ export const podSecurity: Chapter = {
     ),
     code(
       "bash",
-      "k label namespace lab-psa pod-security.kubernetes.io/enforce=baseline pod-security.kubernetes.io/enforce-version=v1.35 pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/audit-version=v1.35 pod-security.kubernetes.io/warn=restricted pod-security.kubernetes.io/warn-version=v1.35\nk get namespace lab-psa --show-labels\nk -n lab-psa apply --dry-run=server -f lab/level-3/pod-security/legacy.yaml",
+      "k label namespace lab-psa pod-security.kubernetes.io/enforce=baseline pod-security.kubernetes.io/enforce-version=v1.35 pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/audit-version=v1.35 pod-security.kubernetes.io/warn=restricted pod-security.kubernetes.io/warn-version=v1.35 &&\nk get namespace lab-psa --show-labels &&\nk -n lab-psa apply --dry-run=server -f lab/level-3/pod-security/legacy.yaml",
     ),
     note(
       "warn",
@@ -64,7 +64,7 @@ export const podSecurity: Chapter = {
     ),
     code(
       "bash",
-      "k -n lab-psa apply -f lab/level-3/pod-security/legacy.yaml\nk -n lab-psa wait --for=condition=Ready pod/legacy --timeout=120s\nk label namespace lab-psa pod-security.kubernetes.io/enforce=restricted --overwrite\nk -n lab-psa get pod legacy\nk -n lab-psa apply --dry-run=server -f lab/level-3/pod-security/rejected-new.yaml",
+      "k -n lab-psa apply -f lab/level-3/pod-security/legacy.yaml &&\nk -n lab-psa wait --for=condition=Ready pod/legacy --timeout=120s &&\nk label namespace lab-psa pod-security.kubernetes.io/enforce=restricted --overwrite &&\nk -n lab-psa get pod legacy &&\nk -n lab-psa apply --dry-run=server -f lab/level-3/pod-security/rejected-new.yaml",
     ),
     p(
       "Expected: changing the label may warn about existing violations, but the already running legacy Pod is not evicted. The new rejected-new request is refused and exits nonzero because restricted now enforces the missing protection. Admission cannot retroactively restart, quarantine or repair old Pods. A rolling replacement plan is part of rollout safety; switching a label while controllers still generate incompatible Pods can leave the application without replacements during a later node failure.",
@@ -162,7 +162,7 @@ export const podSecurity: Chapter = {
         code("yaml", fixed, "lab/level-3/pod-security/fixed-legacy.yaml"),
         code(
           "bash",
-          "k -n lab-psa apply --dry-run=server -f lab/level-3/pod-security/fixed-legacy.yaml\nk -n lab-psa apply -f lab/level-3/pod-security/fixed-legacy.yaml\nk -n lab-psa wait --for=condition=Ready pod/fixed-legacy --timeout=120s\nk -n lab-psa delete pod legacy\nk get namespace lab-psa --show-labels",
+          "k -n lab-psa apply --dry-run=server -f lab/level-3/pod-security/fixed-legacy.yaml &&\nk -n lab-psa apply -f lab/level-3/pod-security/fixed-legacy.yaml &&\nk -n lab-psa wait --for=condition=Ready pod/fixed-legacy --timeout=120s &&\nk -n lab-psa delete pod legacy &&\nk get namespace lab-psa --show-labels",
         ),
         p(
           "Expected: the fixed Pod is admitted and becomes Ready while restricted/v1.35 stays enforced. This standalone fixture deliberately has no controller. For a Deployment, update and preflight its template before controlled replacement; deleting managed Pods first would recreate the same invalid specification.",

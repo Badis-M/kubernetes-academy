@@ -1,38 +1,75 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react";
 import type { L, Lang } from "@/content/types";
 
 const KEY = "k8slab.lang";
 
-const LangCtx = createContext<{ lang: Lang; setLang: (l: Lang) => void; tr: (s: L) => string }>({
+const LangCtx = createContext<{
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  tr: (s: L) => string;
+  storageUnavailable: boolean;
+}>({
   lang: "en",
   setLang: () => {},
   tr: (s) => s.en,
+  storageUnavailable: false,
 });
 
-export function LangProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("en");
-
+export function LangProvider({
+  children,
+  initialLang,
+  onLanguageChange,
+}: {
+  children: ReactNode;
+  initialLang?: Lang | undefined;
+  onLanguageChange?: (lang: Lang) => void;
+}) {
+  const [lang, setLangState] = useState<Lang>(initialLang ?? "en");
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
+  const initialized = useRef(false);
   useEffect(() => {
-    const saved = window.localStorage.getItem(KEY);
-    if (saved === "fr" || saved === "en") setLangState(saved);
-    else if (navigator.language?.toLowerCase().startsWith("fr")) setLangState("fr");
-  }, []);
+    if (initialLang) {
+      setLangState(initialLang);
+      initialized.current = true;
+      return;
+    }
+    if (initialized.current) return;
+    initialized.current = true;
+    let selected: Lang = navigator.language?.toLowerCase().startsWith("fr") ? "fr" : "en";
+    try {
+      const saved = window.localStorage.getItem(KEY);
+      if (saved === "fr" || saved === "en") selected = saved;
+    } catch {
+      setStorageUnavailable(true);
+    }
+    setLangState(selected);
+    onLanguageChange?.(selected);
+  }, [initialLang, onLanguageChange]);
 
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
-
-  const setLang = (l: Lang) => {
-    setLangState(l);
-    window.localStorage.setItem(KEY, l);
+  const setLang = (value: Lang) => {
+    setLangState(value);
+    try {
+      window.localStorage.setItem(KEY, value);
+      setStorageUnavailable(false);
+    } catch {
+      setStorageUnavailable(true);
+    }
+    onLanguageChange?.(value);
   };
-
-  return <LangCtx.Provider value={{ lang, setLang, tr: (s) => s[lang] }}>{children}</LangCtx.Provider>;
+  return (
+    <LangCtx.Provider value={{ lang, setLang, tr: (s) => s[lang], storageUnavailable }}>
+      {children}
+    </LangCtx.Provider>
+  );
 }
-
+// eslint-disable-next-line react-refresh/only-export-components -- Keep the shared context API with its provider.
 export const useLang = () => useContext(LangCtx);
 
 /** Interface strings. */
+// eslint-disable-next-line react-refresh/only-export-components -- Keep the shared context API with its provider.
 export const ui = {
   academy: { en: "Academy", fr: "Académie" },
   lab: { en: "Guided lab", fr: "Lab guidé" },

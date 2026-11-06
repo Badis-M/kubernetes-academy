@@ -193,7 +193,20 @@ export const failureScenarios: Chapter = {
       [
         code(
           "bash",
-          "k -n lab-failures scale deployment/web --replicas=1\nk -n lab-failures rollout status deployment/web --timeout=120s\nk -n lab-failures get deployment web\nk -n lab-failures describe pdb web\nk -n lab-failures scale deployment/web --replicas=2\nk -n lab-failures rollout status deployment/web --timeout=180s\nk -n lab-failures get endpointslices -l kubernetes.io/service-name=web",
+          "k -n lab-failures scale deployment/web --replicas=1 &&\nk -n lab-failures rollout status deployment/web --timeout=120s",
+        ),
+        p(
+          "Pause here. Inspect the failure with the next read-only/diagnostic commands; a rollout timeout or rejected dry-run can be expected. Record the actual symptom before recovery. Do not paste all blocks at once.",
+          "Arrêtez-vous ici. Examinez la panne avec les commandes de lecture/diagnostic suivantes ; timeout de rollout ou dry-run rejeté peuvent être attendus. Notez le symptôme réel avant la reprise. Ne collez pas tous les blocs à la fois.",
+        ),
+        code("bash", "k -n lab-failures get deployment web\nk -n lab-failures describe pdb web"),
+        p(
+          "After explaining the observation, run this recovery block. Each failed recovery prerequisite stops the remaining commands.",
+          "Après avoir expliqué l’observation, lancez ce bloc de reprise. Chaque prérequis de reprise échoué arrête les commandes suivantes.",
+        ),
+        code(
+          "bash",
+          "k -n lab-failures scale deployment/web --replicas=2 &&\nk -n lab-failures rollout status deployment/web --timeout=180s &&\nk -n lab-failures get endpointslices -l kubernetes.io/service-name=web",
         ),
         p(
           "Expected: one replica can exist despite minAvailable:2; disruptionsAllowed stays zero. Restore two ready replicas before acceptance. No node was drained, no Eviction request was made and no guarantee about involuntary disruption was tested.",

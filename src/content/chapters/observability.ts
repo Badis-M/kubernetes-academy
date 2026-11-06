@@ -65,6 +65,7 @@ export const observability: Chapter = {
       "The app creates a span, records a counter/histogram and emits a structured log while that span is current. The returned trace_id lets you find the corresponding Collector span and log. It is not a metric label. SDK/exporter 1.38.0 are intentionally paired to the checked example API, including its experimental logs API; upgrade both with compatibility review rather than treating them as latest. The HTTP server is a teaching fixture, not a production framework.",
       "L’application crée un span, enregistre compteur/histogramme et produit un log structuré pendant que le span est courant. Le trace_id retourné permet de retrouver le span et son log dans le Collector. Ce n’est pas un label métrique. SDK/exporter 1.38.0 sont associés volontairement à l’API vérifiée, dont les logs expérimentaux ; mettez-les à jour ensemble après examen de compatibilité, sans les considérer latest. Le serveur HTTP est pédagogique, pas un framework de production.",
     ),
+    { type: "diagram", name: "observability-flow" },
     h(
       "startup",
       "Start only if you choose to run the lab",
@@ -77,11 +78,11 @@ export const observability: Chapter = {
       ),
       code: {
         lang: "bash",
-        code: "docker compose version\nread -r -s LAB_GRAFANA_PASSWORD\nexport LAB_GRAFANA_PASSWORD\nalias obs='docker compose -p k8s-ops-observability -f lab/level-3/observability/compose.yaml'\nobs config --quiet\nobs up -d --build\nobs ps\nobs logs --tail=30 collector prometheus grafana",
+        code: 'docker compose version &&\n  LAB_OBS_DIR=$(mktemp -d) &&\n  export LAB_OBS_STATE="$LAB_OBS_DIR/state.json" &&\n  python3 lab/level-3/observability/stack.py "$LAB_OBS_STATE" init &&\n  LAB_GRAFANA_PASSWORD=$(python3 -c \'import getpass; print(getpass.getpass("Temporary Grafana password: "))\') &&\n  test -n "$LAB_GRAFANA_PASSWORD" &&\n  export LAB_GRAFANA_PASSWORD &&\n  python3 lab/level-3/observability/stack.py "$LAB_OBS_STATE" up -d --build &&\n  python3 lab/level-3/observability/stack.py "$LAB_OBS_STATE" ps',
       },
       explain: l(
-        "Run from the repository root. When read waits, enter a temporary local Grafana password and press Enter; it is not echoed. Do not print the resolved Compose configuration, which contains that password. Check all services stay running before traffic generation. Keep the same shell for cleanup.",
-        "Exécutez depuis la racine. Quand read attend, saisissez un mot de passe Grafana temporaire local puis Entrée ; il n’est pas affiché. N’affichez pas la configuration Compose résolue qui contient ce mot de passe. Vérifiez les services actifs avant le trafic. Gardez le shell pour le nettoyage.",
+        "Run from the repository root. At the Python prompt, enter a temporary local Grafana password and press Enter; it is not echoed. Do not print the resolved Compose configuration, which contains that password. Check all services stay running before traffic generation. Keep the same shell for cleanup.",
+        "Exécutez depuis la racine. À l’invite Python, saisissez un mot de passe Grafana temporaire local puis Entrée ; il n’est pas affiché. N’affichez pas la configuration Compose résolue qui contient ce mot de passe. Vérifiez les services actifs avant le trafic. Gardez le shell pour le nettoyage.",
       ),
       expected: {
         text: l(
@@ -90,6 +91,14 @@ export const observability: Chapter = {
         ),
       },
     }),
+    p(
+      "Python 3 is required. The helper reserves a unique project, records the Docker daemon and labels every container, network and volume with this run token. Keep LAB_OBS_STATE and the temporary password in this shell. After a partial start, inspect ps/logs then clean up; do not rerun up or substitute another state file. Stop if identity checks fail. Reserve this project for one operator: Docker does not offer an atomic multi-resource cleanup. The helper never runs prune or removes images.",
+      "Python 3 est requis. Le helper réserve un projet unique, enregistre le démon Docker et marque chaque conteneur, réseau et volume avec le jeton de cette exécution. Gardez LAB_OBS_STATE et le mot de passe temporaire dans ce shell. Après un démarrage partiel, examinez ps/logs puis nettoyez ; ne relancez pas up et ne substituez pas un autre fichier d’état. Arrêtez-vous si les identités diffèrent. Réservez ce projet à un opérateur : Docker n’offre pas de nettoyage atomique multiressource. Le helper ne lance jamais prune et ne retire pas les images.",
+    ),
+    code(
+      "bash",
+      'function obs() { python3 lab/level-3/observability/stack.py "${LAB_OBS_STATE:?Reserve the run first}" "$@"; }',
+    ),
     h("traffic", "Generate measurable data", "Générer des données mesurables"),
     code(
       "bash",
@@ -223,6 +232,6 @@ export const observability: Chapter = {
       "The following removes this Compose project's containers and named data volumes, including saved Grafana configuration and metric history. It does not touch Kubernetes. Do not add broad Docker prune commands. Unset the temporary password afterwards.",
       "La commande retire les conteneurs et volumes nommés de ce projet Compose, dont configuration Grafana et historique métrique. Elle ne touche pas Kubernetes. N’ajoutez aucun prune Docker global. Retirez ensuite le mot de passe temporaire du shell.",
     ),
-    code("bash", "obs down --volumes\nunset LAB_GRAFANA_PASSWORD"),
+    code("bash", "obs down --volumes &&\n  unset LAB_GRAFANA_PASSWORD"),
   ],
 };

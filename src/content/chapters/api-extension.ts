@@ -1,5 +1,19 @@
 import type { Chapter } from "../types";
-import { l, h, p, code, note, list, labContext, quiz, question, challenge } from "../lesson-kit";
+import {
+  l,
+  h,
+  p,
+  code,
+  note,
+  list,
+  labContext,
+  requireAbsentResource,
+  requireOwnedNamespace,
+  requireResourceUid,
+  quiz,
+  question,
+  challenge,
+} from "../lesson-kit";
 import server from "../../../lab/level-4/api-extension/server.py?raw";
 import crd from "../../../lab/level-4/api-extension/crd.yaml?raw";
 
@@ -39,7 +53,7 @@ export const apiExtension: Chapter = {
       "The ConversionReview response must preserve request UID, input order, object kind and object identity. Do not perform business side effects, contact an external inventory or generate a new name while converting. Our schemas deliberately encode the same integer as v1.spec.size and v2.spec.replicas, so a lossless mapping exists. When a newer schema adds information an older one cannot represent, inventing a default during downgrade can silently destroy meaning; design an explicit round-trip strategy or restrict incompatible evolution before shipping it.",
       "La réponse ConversionReview doit préserver UID de requête, ordre des entrées, kind et identité des objets. N’effectuez pas d’effet métier, ne consultez pas un inventaire externe et ne générez pas un nouveau nom pendant conversion. Nos schémas représentent volontairement le même entier par v1.spec.size et v2.spec.replicas : une conversion sans perte est possible. Si un schéma récent ajoute une information absente de l’ancien, inventer une valeur par défaut à la rétroconversion peut détruire le sens ; concevez un aller-retour explicite ou limitez cette évolution avant livraison.",
     ),
-    ...labContext("lab-conversion"),
+    ...labContext("lab-conversion", "LAB_CONVERSION_NAMESPACE_UID"),
     note(
       "warn",
       l("A separate service and CRD", "Un service et une CRD distincts"),
@@ -48,9 +62,12 @@ export const apiExtension: Chapter = {
         "Utilisez Python 3.13+, OpenSSL 3+, Docker et le cluster kind jetable. Arrêtez-vous si gadgets.workshops.k8sops.dev existe déjà. Cet exercice installe son propre convertisseur sans modifier d’autres CRD. Réutilisez le générateur de certificats du chapitre admission, qui ne fait que créer des fichiers locaux et accepte précisément ce namespace. Gardez le backend actif jusqu’au nettoyage de toutes les ressources personnalisées et de la CRD.",
       ),
     ),
+    code("bash", requireAbsentResource("crd", "gadgets.workshops.k8sops.dev")),
     code(
       "bash",
-      'k get crd gadgets.workshops.k8sops.dev --ignore-not-found\npython3 -m unittest discover -s lab/level-4/api-extension -p \'test_*.py\'\nconversion_certs=$(mktemp -d)\nbash lab/level-4/admission-webhooks/prepare-tls.sh lab-conversion "$conversion_certs"\nk -n lab-conversion create secret tls webhook-tls --cert="$conversion_certs/tls.crt" --key="$conversion_certs/tls.key"\ndocker build -t conversion-webhook:local lab/level-4/api-extension\nkind load docker-image conversion-webhook:local --name k8s-ops-lab\nk -n lab-conversion apply -f lab/level-4/api-extension/server.yaml\nk -n lab-conversion rollout status deployment/webhook --timeout=120s',
+      requireOwnedNamespace("lab-conversion", "LAB_CONVERSION_NAMESPACE_UID") +
+        " &&\n  " +
+        'python3 -m unittest discover -s lab/level-4/api-extension -p \'test_*.py\' &&\n  conversion_certs=$(mktemp -d) &&\n  bash lab/level-4/admission-webhooks/prepare-tls.sh lab-conversion "$conversion_certs" &&\n  k -n lab-conversion create secret tls webhook-tls --cert="$conversion_certs/tls.crt" --key="$conversion_certs/tls.key" &&\n  docker build -t conversion-webhook:local lab/level-4/api-extension &&\n  kind load docker-image conversion-webhook:local --name k8s-ops-lab &&\n  k -n lab-conversion apply -f lab/level-4/api-extension/server.yaml &&\n  k -n lab-conversion rollout status deployment/webhook --timeout=120s',
     ),
     h("converter", "Read and test both directions", "Lire et tester les deux directions"),
     code("python", server, "lab/level-4/api-extension/server.py"),
@@ -61,7 +78,24 @@ export const apiExtension: Chapter = {
     code("yaml", crd, "lab/level-4/api-extension/crd.yaml (render before applying)"),
     code(
       "bash",
-      'conversion_ca=$(cat "$conversion_certs/ca-bundle.txt")\nsed "s|CA_BUNDLE_PLACEHOLDER|$conversion_ca|" lab/level-4/api-extension/crd.yaml > "$conversion_certs/crd.yaml"\nk apply -f "$conversion_certs/crd.yaml"\nk wait --for=condition=Established crd/gadgets.workshops.k8sops.dev --timeout=60s\nk -n lab-conversion apply -f lab/level-4/api-extension/gadget-v1.yaml\nk get --raw /apis/workshops.k8sops.dev/v1/namespaces/lab-conversion/gadgets/demo\nk get --raw /apis/workshops.k8sops.dev/v2/namespaces/lab-conversion/gadgets/demo\nk get crd gadgets.workshops.k8sops.dev -o jsonpath=\'{.status.storedVersions}\'',
+      "LAB_CONVERSION_RESOURCE_UID=\n" +
+        requireOwnedNamespace("lab-conversion", "LAB_CONVERSION_NAMESPACE_UID") +
+        " &&\n  " +
+        requireAbsentResource("crd", "gadgets.workshops.k8sops.dev") +
+        " &&\n  " +
+        'conversion_ca=$(cat "$conversion_certs/ca-bundle.txt")' +
+        " &&\n  " +
+        'sed "s|CA_BUNDLE_PLACEHOLDER|$conversion_ca|" lab/level-4/api-extension/crd.yaml > "$conversion_certs/crd.yaml"' +
+        " &&\n  " +
+        'LAB_CONVERSION_RESOURCE_UID=$(k create -f "$conversion_certs/crd.yaml" -o jsonpath=\'{.metadata.uid}\') &&\n  test -n "$LAB_CONVERSION_RESOURCE_UID"' +
+        " &&\n  " +
+        "k wait --for=condition=Established crd/gadgets.workshops.k8sops.dev --timeout=60s" +
+        " &&\n  " +
+        "k -n lab-conversion apply -f lab/level-4/api-extension/gadget-v1.yaml" +
+        " &&\n  " +
+        "k get --raw /apis/workshops.k8sops.dev/v1/namespaces/lab-conversion/gadgets/demo" +
+        " &&\n  " +
+        "k get --raw /apis/workshops.k8sops.dev/v2/namespaces/lab-conversion/gadgets/demo",
     ),
     p(
       "Expected: the v1 view contains size:3, the v2 view replicas:3, and both retain name/namespace/UID and the workshop annotation. Newly written data is stored as v1. Reading v2 does not rewrite stored data. The preferred kubectl discovery version may be v2; explicit raw API paths remove that ambiguity. The typed schemas intentionally permit only equivalent count fields, so unknown-field pruning must be considered before promising preservation of arbitrary future data.",
@@ -174,7 +208,19 @@ export const apiExtension: Chapter = {
     ),
     code(
       "bash",
-      'k -n lab-conversion delete gadgets.workshops.k8sops.dev --all\nk delete crd gadgets.workshops.k8sops.dev\nk delete namespace lab-conversion\nprintf "Inspect and manually remove private conversion certificates: %s\\n" "$conversion_certs"',
+      requireOwnedNamespace("lab-conversion", "LAB_CONVERSION_NAMESPACE_UID") +
+        " &&\n  " +
+        requireResourceUid("crd", "gadgets.workshops.k8sops.dev", "LAB_CONVERSION_RESOURCE_UID") +
+        " &&\n  " +
+        "k -n lab-conversion delete gadgets.workshops.k8sops.dev --all --wait=true --timeout=120s" +
+        " &&\n  " +
+        "k delete crd gadgets.workshops.k8sops.dev --wait=true --timeout=120s" +
+        " &&\n  " +
+        requireAbsentResource("crd", "gadgets.workshops.k8sops.dev") +
+        " &&\n  " +
+        "k delete namespace lab-conversion --wait=true --timeout=120s" +
+        " &&\n  " +
+        'printf "Inspect and manually remove private lab certificates: %s\\n" "$conversion_certs"',
     ),
     p(
       "Deleting a CRD deletes its custom resources; the exercise therefore uses a dedicated group and checks for existing ownership first. Remove the printed private certificate directory manually after verifying cluster cleanup. No APIService, global trust root or external certificate controller was installed.",

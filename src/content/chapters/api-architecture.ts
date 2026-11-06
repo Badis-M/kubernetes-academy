@@ -125,6 +125,7 @@ export const apiArchitecture: Chapter = {
         },
       },
     ),
+    { type: "diagram", name: "api-conflict-timeline" },
     h(
       "watch",
       "Watches are resumable observation, not an audit log",

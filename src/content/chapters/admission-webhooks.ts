@@ -1,5 +1,19 @@
 import type { Chapter } from "../types";
-import { l, h, p, code, note, list, labContext, quiz, question, challenge } from "../lesson-kit";
+import {
+  l,
+  h,
+  p,
+  code,
+  note,
+  list,
+  labContext,
+  requireAbsentResource,
+  requireOwnedNamespace,
+  requireResourceUid,
+  quiz,
+  question,
+  challenge,
+} from "../lesson-kit";
 import server from "../../../lab/level-4/admission-webhooks/server.py?raw";
 import webhook from "../../../lab/level-4/admission-webhooks/webhook.yaml?raw";
 
@@ -43,18 +57,22 @@ export const admissionWebhooks: Chapter = {
       "The API server calls a TLS Service endpoint using an AdmissionReview envelope, and the response must echo request.uid. A normal denial is HTTP 200 with allowed:false; transport failure or malformed response follows failurePolicy instead. Fail refuses affected requests when the backend cannot answer, while Ignore can admit them without the check. A small timeout bounds added latency, not total application outage. Scope narrowly to avoid making your own certificate rotation, system recovery or every cluster write depend on an unavailable service.",
       "Le serveur API appelle un Service TLS avec une enveloppe AdmissionReview ; la réponse doit recopier request.uid. Un refus normal est HTTP 200 avec allowed:false ; une panne de transport ou réponse malformée relève de failurePolicy. Fail refuse les requêtes concernées sans réponse du backend ; Ignore peut les admettre sans contrôle. Un timeout court borne la latence ajoutée, pas la durée totale d’une panne. Limitez la portée pour ne pas rendre rotation de certificats, récupération système ou toutes les écritures dépendantes d’un service indisponible.",
     ),
-    ...labContext("lab-admission"),
+    { type: "diagram", name: "admission-webhook-flow" },
+    ...labContext("lab-admission", "LAB_ADMISSION_NAMESPACE_UID"),
     note(
       "warn",
       l("Extra tools and cleanup first", "Outils supplémentaires et nettoyage préalable"),
       l(
-        "The learner needs Python 3.13+, OpenSSL 3+ with -addext, Docker and kind. This lesson supplies complete Python stdlib code, unit tests and Docker/manifests; the implementation agent does not start them. Stop if lab-owner-validation already exists. Only label lab-admission. The generated private keys stay in a private temporary directory and Kubernetes Secret, never in Git or terminal output. Certificates expire after two days: this is a lab PKI, not rotation automation.",
-        "L’apprenant doit disposer de Python 3.13+, OpenSSL 3+ avec -addext, Docker et kind. Ce cours fournit code Python stdlib complet, tests unitaires, Docker et manifests ; l’agent ne les démarre pas. Arrêtez-vous si lab-owner-validation existe déjà. Étiquetez seulement lab-admission. Les clés privées générées restent dans un répertoire temporaire privé et un Secret Kubernetes, jamais dans Git ni les sorties terminal. Les certificats expirent après deux jours : cette PKI de lab n’automatise pas la rotation.",
+        "The learner needs Python 3.13+, OpenSSL 3+ with -addext, Docker and kind. The provided Python server uses only the standard library. Run its unit tests before building the image. Stop if lab-owner-validation already exists. Only label lab-admission. The generated private keys stay in a private temporary directory and Kubernetes Secret, never in Git or terminal output. Certificates expire after two days: this is a lab PKI, not rotation automation.",
+        "L’apprenant doit disposer de Python 3.13+, OpenSSL 3+ avec -addext, Docker et kind. Le serveur Python fourni utilise uniquement la bibliothèque standard. Lancez les tests unitaires avant de construire l’image. Arrêtez-vous si lab-owner-validation existe déjà. Étiquetez seulement lab-admission. Les clés privées générées restent dans un répertoire temporaire privé et un Secret Kubernetes, jamais dans Git ni les sorties terminal. Les certificats expirent après deux jours : cette PKI de lab n’automatise pas la rotation.",
       ),
     ),
+    code("bash", requireAbsentResource("validatingwebhookconfiguration", "lab-owner-validation")),
     code(
       "bash",
-      'k get validatingwebhookconfiguration lab-owner-validation --ignore-not-found\npython3 -m unittest discover -s lab/level-4/admission-webhooks -p \'test_*.py\'\ncert_dir=$(mktemp -d)\nbash lab/level-4/admission-webhooks/prepare-tls.sh lab-admission "$cert_dir"\nk -n lab-admission create secret tls webhook-tls --cert="$cert_dir/tls.crt" --key="$cert_dir/tls.key"\ndocker build -t admission-webhook:local lab/level-4/admission-webhooks\nkind load docker-image admission-webhook:local --name k8s-ops-lab\nk -n lab-admission apply -f lab/level-4/admission-webhooks/server.yaml\nk -n lab-admission rollout status deployment/webhook --timeout=120s',
+      requireOwnedNamespace("lab-admission", "LAB_ADMISSION_NAMESPACE_UID") +
+        " &&\n  " +
+        'python3 -m unittest discover -s lab/level-4/admission-webhooks -p \'test_*.py\' &&\n  cert_dir=$(mktemp -d) &&\n  bash lab/level-4/admission-webhooks/prepare-tls.sh lab-admission "$cert_dir" &&\n  k -n lab-admission create secret tls webhook-tls --cert="$cert_dir/tls.crt" --key="$cert_dir/tls.key" &&\n  docker build -t admission-webhook:local lab/level-4/admission-webhooks &&\n  kind load docker-image admission-webhook:local --name k8s-ops-lab &&\n  k -n lab-admission apply -f lab/level-4/admission-webhooks/server.yaml &&\n  k -n lab-admission rollout status deployment/webhook --timeout=120s',
     ),
     h(
       "implementation",
@@ -69,11 +87,32 @@ export const admissionWebhooks: Chapter = {
     code("yaml", webhook, "lab/level-4/admission-webhooks/webhook.yaml (render before applying)"),
     code(
       "bash",
-      'ca_bundle=$(cat "$cert_dir/ca-bundle.txt")\nsed "s|CA_BUNDLE_PLACEHOLDER|$ca_bundle|" lab/level-4/admission-webhooks/webhook.yaml > "$cert_dir/webhook.yaml"\nk label namespace lab-admission lab.k8sops.dev/admission=enabled\nk apply -f "$cert_dir/webhook.yaml"\nk -n lab-admission apply --dry-run=server -f lab/level-4/admission-webhooks/valid.yaml\nk -n lab-admission apply --dry-run=server -f lab/level-4/admission-webhooks/invalid.yaml',
+      "LAB_ADMISSION_RESOURCE_UID=\n" +
+        requireOwnedNamespace("lab-admission", "LAB_ADMISSION_NAMESPACE_UID") +
+        " &&\n  " +
+        requireAbsentResource("validatingwebhookconfiguration", "lab-owner-validation") +
+        " &&\n  " +
+        'ca_bundle=$(cat "$cert_dir/ca-bundle.txt")' +
+        " &&\n  " +
+        'sed "s|CA_BUNDLE_PLACEHOLDER|$ca_bundle|" lab/level-4/admission-webhooks/webhook.yaml > "$cert_dir/webhook.yaml"' +
+        " &&\n  " +
+        "k label namespace lab-admission lab.k8sops.dev/admission=enabled" +
+        " &&\n  " +
+        'LAB_ADMISSION_RESOURCE_UID=$(k create -f "$cert_dir/webhook.yaml" -o jsonpath=\'{.metadata.uid}\') &&\n  test -n "$LAB_ADMISSION_RESOURCE_UID"' +
+        " &&\n  " +
+        "k -n lab-admission apply --dry-run=server -f lab/level-4/admission-webhooks/valid.yaml",
     ),
     p(
-      "caBundle contains the PEM CA encoded in base64, not the private key. The certificate SAN matches webhook.lab-admission.svc, the identity used by the Service reference. Expected after registration propagates: valid is accepted in dry-run and invalid is denied with the owner message. Neither dry-run creates a ConfigMap. namespaceSelector reduces scope; it is not tenant-proof if users can change the namespace label. Object selectors alone would be bypassable if users could remove the matching object label.",
-      "caBundle contient la CA PEM encodée en base64, pas la clé privée. Le SAN correspond à webhook.lab-admission.svc, identité employée par la référence Service. Attendu après propagation : valid est accepté en dry-run et invalid refusé avec le message owner. Aucun dry-run ne crée de ConfigMap. namespaceSelector réduit la portée ; il n’est pas inviolable si les utilisateurs modifient le label du namespace. Un object selector seul serait contournable si l’utilisateur retirait le label de sélection.",
+      "After the valid dry-run succeeds, run the invalid one separately. It should be denied by the webhook.",
+      "Quand le dry-run valide réussit, lancez le cas invalide séparément. Le webhook doit le refuser.",
+    ),
+    code(
+      "bash",
+      "k -n lab-admission apply --dry-run=server -f lab/level-4/admission-webhooks/invalid.yaml",
+    ),
+    p(
+      "caBundle contains the PEM CA encoded in base64, not the private key. The certificate SAN matches webhook.lab-admission.svc, the identity used by the Service reference. Expected after registration propagates: valid is accepted in dry-run and invalid is denied with the owner message. Neither dry-run creates a ConfigMap. namespaceSelector reduces scope; it is not tenant-proof if users can change the namespace label. For UPDATE, objectSelector matches if either the old or new object matches. Removing a matching label does not skip that update. A user who can create an object without the selecting label can avoid an opt-in webhook.",
+      "caBundle contient la CA PEM encodée en base64, pas la clé privée. Le SAN correspond à webhook.lab-admission.svc, identité employée par la référence Service. Attendu après propagation : valid est accepté en dry-run et invalid refusé avec le message owner. Aucun dry-run ne crée de ConfigMap. namespaceSelector réduit la portée ; il n’est pas inviolable si les utilisateurs modifient le label du namespace. Pour UPDATE, objectSelector s’applique si l’ancien ou le nouvel objet correspond. Retirer le label ne contourne pas cet appel. Un utilisateur qui peut créer un objet sans le label de sélection peut éviter un webhook à adhésion volontaire.",
     ),
     h(
       "diagnosis",
@@ -161,7 +200,23 @@ export const admissionWebhooks: Chapter = {
       [
         code(
           "bash",
-          "k -n lab-admission scale deployment/webhook --replicas=0\nk -n lab-admission get endpointslices -l kubernetes.io/service-name=webhook\nk -n lab-admission apply --dry-run=server -f lab/level-4/admission-webhooks/valid.yaml\nk -n lab-admission scale deployment/webhook --replicas=1\nk -n lab-admission rollout status deployment/webhook --timeout=120s\nk -n lab-admission apply --dry-run=server -f lab/level-4/admission-webhooks/valid.yaml",
+          "k -n lab-admission scale deployment/webhook --replicas=0 &&\n  k -n lab-admission wait --for=delete pod -l app=admission-webhook --timeout=120s",
+        ),
+        p(
+          "Pause here. Inspect the failure with the next read-only/diagnostic commands; a rollout timeout or rejected dry-run can be expected. Record the actual symptom before recovery. Do not paste all blocks at once.",
+          "Arrêtez-vous ici. Examinez la panne avec les commandes de lecture/diagnostic suivantes ; timeout de rollout ou dry-run rejeté peuvent être attendus. Notez le symptôme réel avant la reprise. Ne collez pas tous les blocs à la fois.",
+        ),
+        code(
+          "bash",
+          "k -n lab-admission get endpointslices -l kubernetes.io/service-name=webhook\nk -n lab-admission apply --dry-run=server -f lab/level-4/admission-webhooks/valid.yaml",
+        ),
+        p(
+          "After explaining the observation, run this recovery block. Each failed recovery prerequisite stops the remaining commands.",
+          "Après avoir expliqué l’observation, lancez ce bloc de reprise. Chaque prérequis de reprise échoué arrête les commandes suivantes.",
+        ),
+        code(
+          "bash",
+          "k -n lab-admission scale deployment/webhook --replicas=1 &&\nk -n lab-admission rollout status deployment/webhook --timeout=120s &&\nk -n lab-admission apply --dry-run=server -f lab/level-4/admission-webhooks/valid.yaml",
         ),
         p(
           "Wait until endpoints are absent before the failed probe and present before recovery. Expected: transport error while scaled down, success after recovery. This isolates policy-backend failure from an intentional owner-label denial.",
@@ -176,7 +231,21 @@ export const admissionWebhooks: Chapter = {
     ),
     code(
       "bash",
-      'k delete validatingwebhookconfiguration lab-owner-validation\nk delete namespace lab-admission\nprintf "Inspect and manually remove private lab certificates: %s\\n" "$cert_dir"',
+      requireOwnedNamespace("lab-admission", "LAB_ADMISSION_NAMESPACE_UID") +
+        " &&\n  " +
+        requireResourceUid(
+          "validatingwebhookconfiguration",
+          "lab-owner-validation",
+          "LAB_ADMISSION_RESOURCE_UID",
+        ) +
+        " &&\n  " +
+        "k delete validatingwebhookconfiguration lab-owner-validation --wait=true --timeout=120s" +
+        " &&\n  " +
+        requireAbsentResource("validatingwebhookconfiguration", "lab-owner-validation") +
+        " &&\n  " +
+        "k delete namespace lab-admission --wait=true --timeout=120s" +
+        " &&\n  " +
+        'printf "Inspect and manually remove private lab certificates: %s\\n" "$cert_dir"',
     ),
     p(
       "Inspect and remove the printed temporary directory, including its CA/server private keys. The explicit cluster-scoped registration cleanup prevents leaving a fail-closed dependency pointing at a deleted Service.",

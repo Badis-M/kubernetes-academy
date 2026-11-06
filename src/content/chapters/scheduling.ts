@@ -7,6 +7,7 @@ import {
   note,
   list,
   labContext,
+  requireResourceUid,
   steps,
   quiz,
   question,
@@ -49,7 +50,12 @@ export const scheduling: Chapter = {
       "A taint repels Pods. A matching toleration removes that obstacle; it neither selects the node nor reserves it exclusively. NoSchedule blocks new placement but does not evict existing Pods. PreferNoSchedule is soft. NoExecute can evict existing untolerating Pods, so it is deliberately excluded here. Combining a reserved-node label and its taint provides both attraction for the intended workload and rejection of other untolerating workloads.",
       "Un taint repousse des Pods. Une toleration correspondante retire cet obstacle ; elle ne sélectionne pas le nœud et ne le réserve pas exclusivement. NoSchedule bloque les nouveaux placements sans expulser les Pods existants. PreferNoSchedule est souple. NoExecute peut expulser les Pods existants sans tolérance : il est volontairement exclu ici. Combiner le label d’un nœud réservé et son taint permet d’attirer le workload voulu et de repousser les autres workloads sans tolérance.",
     ),
-    ...labContext("lab-scheduling"),
+    { type: "diagram", name: "scheduling-decisions" },
+    ...labContext("lab-scheduling", "LAB_SCHEDULING_NS_UID"),
+    p(
+      "Python 3 is required for lab/scripts/node-metadata.py. It uses only the explicit kind-k8s-ops-lab context, refuses existing keys and checks the Node UID, current value and resourceVersion before removal. Keep this shell open and record each successful addition. Stop on any failure; for partial setup, clean up only additions whose UID was recorded. Do not reuse these exercise keys concurrently.",
+      "Python 3 est nécessaire pour lab/scripts/node-metadata.py. Il cible uniquement kind-k8s-ops-lab, refuse les clés existantes et vérifie UID du Node, valeur actuelle et resourceVersion avant tout retrait. Gardez ce shell ouvert et conservez chaque ajout réussi. Arrêtez-vous en cas d’échec ; après une préparation partielle, nettoyez uniquement les ajouts dont l’UID a été enregistré. Ne partagez pas ces clés d’exercice simultanément.",
+    ),
     note(
       "warn",
       l("Two disposable workers required", "Deux workers jetables nécessaires"),
@@ -72,7 +78,7 @@ export const scheduling: Chapter = {
         title: l("Create a reserved pool", "Créer un pool réservé"),
         code: {
           lang: "bash",
-          code: 'k label node "$worker_a" lab.k8sops.dev/pool=general\nk label node "$worker_b" lab.k8sops.dev/pool=reserved\nk taint node "$worker_b" lab.k8sops.dev/dedicated=exercise:NoSchedule',
+          code: 'test -n "$worker_a" && test -n "$worker_b" && test "$worker_a" != "$worker_b" &&\n  LAB_POOL_A_UID=$(python3 lab/scripts/node-metadata.py label-add "$worker_a" lab.k8sops.dev/pool general) &&\n  LAB_POOL_B_UID=$(python3 lab/scripts/node-metadata.py label-add "$worker_b" lab.k8sops.dev/pool reserved) &&\n  LAB_TAINT_B_UID=$(python3 lab/scripts/node-metadata.py taint-add "$worker_b" lab.k8sops.dev/dedicated exercise)',
         },
         explain: l(
           "These commands do not overwrite existing labels. If any fails, inspect and undo only changes you just made before continuing.",
@@ -192,7 +198,24 @@ export const scheduling: Chapter = {
     h("cleanup", "Undo cluster-scoped metadata too", "Annuler aussi les métadonnées globales"),
     code(
       "bash",
-      'k delete namespace lab-scheduling\nk taint node "$worker_b" lab.k8sops.dev/dedicated:NoSchedule-\nk label node "$worker_a" "$worker_b" lab.k8sops.dev/pool-',
+      `${requireResourceUid("namespace", "lab-scheduling", "LAB_SCHEDULING_NS_UID")} &&
+  k delete namespace lab-scheduling --wait=true --timeout=120s`,
+    ),
+    p(
+      "Run the following removals separately for each successful addition, including after partial setup. Missing UIDs or changed values stop the corresponding removal. Do not obtain a new UID to bypass this check.",
+      "Exécutez les retraits suivants séparément pour chaque ajout réussi, y compris après une préparation partielle. Un UID absent ou une valeur modifiée bloque le retrait correspondant. Ne récupérez pas un nouvel UID pour contourner cette vérification.",
+    ),
+    code(
+      "bash",
+      'python3 lab/scripts/node-metadata.py taint-remove "${worker_b:-}" lab.k8sops.dev/dedicated exercise --uid "${LAB_TAINT_B_UID:-}"',
+    ),
+    code(
+      "bash",
+      'python3 lab/scripts/node-metadata.py label-remove "${worker_b:-}" lab.k8sops.dev/pool reserved --uid "${LAB_POOL_B_UID:-}"',
+    ),
+    code(
+      "bash",
+      'python3 lab/scripts/node-metadata.py label-remove "${worker_a:-}" lab.k8sops.dev/pool general --uid "${LAB_POOL_A_UID:-}"',
     ),
     p(
       "Deleting the namespace alone does not remove labels or taints from nodes. Verify the custom keys disappeared. Advanced scheduling adds topology and disruption trade-offs; these local virtual workers remain one physical failure domain.",

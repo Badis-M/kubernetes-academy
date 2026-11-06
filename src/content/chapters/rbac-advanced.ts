@@ -1,5 +1,21 @@
 import type { Chapter } from "../types";
-import { l, h, p, code, note, list, labContext, quiz, question, challenge } from "../lesson-kit";
+import {
+  l,
+  h,
+  p,
+  code,
+  note,
+  list,
+  labContext,
+  requireAbsentResource,
+  requireOwnedNamespace,
+  requireResourceUid,
+  quiz,
+  question,
+  challenge,
+} from "../lesson-kit";
+import aggregate from "../../../lab/level-3/rbac-advanced/lab-ops-observer.yaml?raw";
+import podRole from "../../../lab/level-3/rbac-advanced/lab-ops-pod-observer.yaml?raw";
 import access from "../../../lab/level-3/rbac-advanced/access.yaml?raw";
 import extension from "../../../lab/level-3/rbac-advanced/config-extension.yaml?raw";
 import forbidden from "../../../lab/level-3/rbac-advanced/forbidden-role.yaml?raw";
@@ -40,7 +56,9 @@ export const rbacAdvanced: Chapter = {
       "Aggregation composes ClusterRoles selected by labels into an aggregate ClusterRole. The control-plane controller owns its rules field: changing it manually is temporary and misleading. Contributors should use an organization-specific label, not automatically extend built-in admin/edit/view roles without reviewing all their recipients. An aggregate ClusterRole bound with a RoleBinding remains limited to namespaced resources in that binding's namespace. Composition does not require a cluster-wide grant.",
       "L’agrégation compose les ClusterRoles sélectionnés par labels dans un ClusterRole agrégé. Le contrôleur du control plane possède son champ rules : le modifier manuellement est temporaire et trompeur. Les contributeurs doivent utiliser un label propre à l’organisation, sans étendre automatiquement admin/edit/view sans examiner tous leurs bénéficiaires. Un ClusterRole agrégé référencé par RoleBinding reste limité aux ressources namespacées du namespace de ce binding. Composer n’exige pas de droit global.",
     ),
-    ...labContext("lab-rbac-advanced"),
+    { type: "diagram", name: "rbac-permission-flow" },
+    { type: "diagram", name: "rbac-aggregation-flow" },
+    ...labContext("lab-rbac-advanced", "LAB_RBAC_UID"),
     note(
       "warn",
       l("Cluster-scoped definitions, namespaced access", "Définitions globales, accès namespacé"),
@@ -51,8 +69,37 @@ export const rbacAdvanced: Chapter = {
     ),
     code(
       "bash",
-      "k get clusterroles lab-ops-observer lab-ops-pod-observer lab-ops-config-observer --ignore-not-found\nk -n lab-rbac-advanced apply -f lab/level-3/rbac-advanced/access.yaml\nk get clusterrole lab-ops-observer -o yaml",
+      requireAbsentResource("clusterrole", "lab-ops-observer") +
+        " &&\n  " +
+        requireAbsentResource("clusterrole", "lab-ops-pod-observer") +
+        " &&\n  " +
+        requireAbsentResource("clusterrole", "lab-ops-config-observer"),
     ),
+    p(
+      "Continue only if all three lookups confirm absence. The write block repeats the checks and records each successful creation for cleanup in this terminal.",
+      "Poursuivez uniquement si les trois lectures confirment l’absence. Le bloc d’écriture répète les vérifications et enregistre chaque création réussie pour le nettoyage dans ce terminal.",
+    ),
+    code(
+      "bash",
+      "LAB_RBAC_AGGREGATE_UID=\nLAB_RBAC_PODS_UID=\nLAB_RBAC_CONFIG_UID=\n" +
+        requireOwnedNamespace("lab-rbac-advanced", "LAB_RBAC_UID") +
+        " &&\n  " +
+        requireAbsentResource("clusterrole", "lab-ops-observer") +
+        " &&\n  " +
+        requireAbsentResource("clusterrole", "lab-ops-pod-observer") +
+        " &&\n  " +
+        requireAbsentResource("clusterrole", "lab-ops-config-observer") +
+        " &&\n  " +
+        "LAB_RBAC_PODS_UID=$(k create -f lab/level-3/rbac-advanced/lab-ops-pod-observer.yaml -o jsonpath='{.metadata.uid}') &&\n  test -n \"$LAB_RBAC_PODS_UID\"" +
+        " &&\n  " +
+        "LAB_RBAC_AGGREGATE_UID=$(k create -f lab/level-3/rbac-advanced/lab-ops-observer.yaml -o jsonpath='{.metadata.uid}') &&\n  test -n \"$LAB_RBAC_AGGREGATE_UID\"" +
+        " &&\n  " +
+        "k -n lab-rbac-advanced create -f lab/level-3/rbac-advanced/access.yaml" +
+        " &&\n  " +
+        "k get clusterrole lab-ops-observer -o yaml",
+    ),
+    code("yaml", podRole, "lab/level-3/rbac-advanced/lab-ops-pod-observer.yaml"),
+    code("yaml", aggregate, "lab/level-3/rbac-advanced/lab-ops-observer.yaml"),
     code("yaml", access, "lab/level-3/rbac-advanced/access.yaml"),
     p(
       "Expected after asynchronous aggregation: the aggregate contains Pod get/list/watch. If rules are initially empty, wait and read again before testing; applying a definition is not proof reconciliation completed. The service identity receives a namespaced binding only. The separate scratch Role permits creating Roles but not binding them, and still cannot bypass escalation checks.",
@@ -74,7 +121,13 @@ export const rbacAdvanced: Chapter = {
     code("yaml", extension, "lab/level-3/rbac-advanced/config-extension.yaml"),
     code(
       "bash",
-      "k apply -f lab/level-3/rbac-advanced/config-extension.yaml\nk get clusterrole lab-ops-observer -o yaml --watch",
+      requireResourceUid("clusterrole", "lab-ops-observer", "LAB_RBAC_AGGREGATE_UID") +
+        " &&\n  " +
+        requireAbsentResource("clusterrole", "lab-ops-config-observer") +
+        " &&\n  " +
+        "LAB_RBAC_CONFIG_UID=$(k create -f lab/level-3/rbac-advanced/config-extension.yaml -o jsonpath='{.metadata.uid}') &&\n  test -n \"$LAB_RBAC_CONFIG_UID\"" +
+        " &&\n  " +
+        "k get clusterrole lab-ops-observer -o yaml --watch",
     ),
     p(
       "Aggregation is asynchronous. Stop the watch with Ctrl+C only when rules includes the named ConfigMap get/list/watch grant; then run the following authorization checks. Testing immediately after apply can otherwise produce a temporary Forbidden unrelated to the intended resourceNames restriction.",
@@ -183,7 +236,13 @@ export const rbacAdvanced: Chapter = {
       [
         code(
           "bash",
-          "k delete clusterrole lab-ops-config-observer\nk get clusterrole lab-ops-observer -o yaml --watch",
+          requireResourceUid("clusterrole", "lab-ops-config-observer", "LAB_RBAC_CONFIG_UID") +
+            " &&\n  " +
+            "k delete clusterrole lab-ops-config-observer" +
+            " &&\n  " +
+            "LAB_RBAC_CONFIG_UID=" +
+            " &&\n  " +
+            "k get clusterrole lab-ops-observer -o yaml --watch",
         ),
         p(
           "Stop the watch with Ctrl+C once the generated ConfigMap rule disappears. Then run these two checks. Deleting the contributor returns before the aggregation controller necessarily removes its copied rule, so an immediate read could still succeed briefly.",
@@ -206,11 +265,31 @@ export const rbacAdvanced: Chapter = {
     ),
     code(
       "bash",
-      "k delete namespace lab-rbac-advanced\nk delete clusterroles lab-ops-observer lab-ops-pod-observer lab-ops-config-observer --ignore-not-found",
+      requireOwnedNamespace("lab-rbac-advanced", "LAB_RBAC_UID") +
+        " &&\n  " +
+        "k delete namespace lab-rbac-advanced",
+    ),
+    code(
+      "bash",
+      requireResourceUid("clusterrole", "lab-ops-config-observer", "LAB_RBAC_CONFIG_UID") +
+        " &&\n  " +
+        "k delete clusterrole lab-ops-config-observer",
+    ),
+    code(
+      "bash",
+      requireResourceUid("clusterrole", "lab-ops-observer", "LAB_RBAC_AGGREGATE_UID") +
+        " &&\n  " +
+        "k delete clusterrole lab-ops-observer",
+    ),
+    code(
+      "bash",
+      requireResourceUid("clusterrole", "lab-ops-pod-observer", "LAB_RBAC_PODS_UID") +
+        " &&\n  " +
+        "k delete clusterrole lab-ops-pod-observer",
     ),
     p(
-      "No ClusterRoleBinding was created. Deleting the namespace removes the delegated Role and bindings but not the custom ClusterRoles; the explicit second command completes cleanup. Human federation, admission field policies and audit retention remain separate platform concerns.",
-      "Aucun ClusterRoleBinding n’a été créé. Supprimer le namespace retire le Role délégué et les bindings, pas les ClusterRoles personnalisés ; la seconde commande complète le nettoyage. Fédération humaine, politiques d’admission sur les champs et conservation d’audit restent des sujets distincts.",
+      "No ClusterRoleBinding was created. Deleting the namespace removes the delegated Role and bindings but not the custom ClusterRoles; run the separate UID-checked blocks for the roles still present. Human federation, admission field policies and audit retention remain separate platform concerns.",
+      "Aucun ClusterRoleBinding n’a été créé. Supprimer le namespace retire le Role délégué et les bindings, pas les ClusterRoles personnalisés ; utilisez les blocs séparés avec vérification d’UID pour les rôles encore présents. Fédération humaine, politiques d’admission sur les champs et conservation d’audit restent des sujets distincts.",
     ),
   ],
 };

@@ -21,7 +21,28 @@ export type DiagramName =
   | "deployment-tree"
   | "vm-vs-container"
   | "pod-lifecycle"
-  | "autoscaling-feedback";
+  | "autoscaling-feedback"
+  | "service-traffic"
+  | "persistent-storage"
+  | "admission-webhook-flow"
+  | "gitops-reconciliation"
+  | "fleet-promotion"
+  | "eviction-budget"
+  | "probe-decisions"
+  | "gateway-routing"
+  | "scheduling-decisions"
+  | "network-policy-decisions"
+  | "init-sidecar-timeline"
+  | "statefulset-identity"
+  | "api-conflict-timeline"
+  | "backup-recovery-timeline"
+  | "observability-flow"
+  | "ha-failure-domains"
+  | "fleet-failure-domains"
+  | "rbac-permission-flow"
+  | "rbac-aggregation-flow"
+  | "etcd-snapshot-timeline"
+  | "csi-snapshot-timeline";
 
 export type LabStep = {
   title: L;
@@ -53,7 +74,13 @@ export type Block =
       caption?: L;
       output?: boolean;
     }
-  | { type: "callout"; tone: "info" | "warn" | "tip"; title: L; text: L }
+  | {
+      type: "callout";
+      tone: "info" | "warn" | "tip";
+      title: L;
+      text: L;
+      link?: { href: `/${string}`; label: L };
+    }
   | { type: "diagram"; name: DiagramName }
   | { type: "steps"; steps: LabStep[] }
   | { type: "fields"; title?: L; rows: { field: string; text: L }[] }

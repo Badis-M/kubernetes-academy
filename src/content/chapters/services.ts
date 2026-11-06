@@ -79,7 +79,7 @@ export const services: Chapter = {
       {
         type: "code",
         lang: "bash",
-        code: "k create namespace lab-services\n\nk -n lab-services apply -f - <<'YAML'\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: web\n  template:\n    metadata:\n      labels:\n        app: web\n    spec:\n      containers:\n        - name: nginx\n          image: nginx:1.28.0\n          ports:\n            - containerPort: 80\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: web\nspec:\n  type: ClusterIP\n  selector:\n    app: web\n  ports:\n    - name: http\n      port: 80\n      targetPort: 80\nYAML\n\nk -n lab-services rollout status deployment/web --timeout=120s\nk -n lab-services get pods -l app=web -o wide\nk -n lab-services get service web",
+        code: "k create namespace lab-services &&\n  k -n lab-services apply -f - <<'YAML'\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: web\n  template:\n    metadata:\n      labels:\n        app: web\n    spec:\n      containers:\n        - name: nginx\n          image: nginx:1.28.0\n          ports:\n            - containerPort: 80\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: web\nspec:\n  type: ClusterIP\n  selector:\n    app: web\n  ports:\n    - name: http\n      port: 80\n      targetPort: 80\nYAML\n\nk -n lab-services rollout status deployment/web --timeout=120s\nk -n lab-services get pods -l app=web -o wide\nk -n lab-services get service web",
       },
       {
         type: "h3",
@@ -117,6 +117,7 @@ export const services: Chapter = {
           fr: "Les EndpointSlices permettent d’inspecter les destinations associées au Service. Comparez leurs adresses avec celles des Pods.",
         },
       },
+      { type: "diagram", name: "service-traffic" },
       {
         type: "p",
         text: {

@@ -7,8 +7,20 @@ import { Quiz } from "@/components/academy/Quiz";
 import { Blocks } from "@/components/academy/Blocks";
 import type { Block } from "@/content/types";
 
-const ids = ["namespaces-contexts", "services", "labels-selectors", "configmaps-secrets", "kubectl-troubleshooting"];
-const keys = [[1, 0, 2], [0, 1, 2], [1, 0, 2], [1, 2, 0], [1, 0, 2]];
+const ids = [
+  "namespaces-contexts",
+  "services",
+  "labels-selectors",
+  "configmaps-secrets",
+  "kubectl-troubleshooting",
+];
+const keys = [
+  [1, 0, 2],
+  [0, 1, 2],
+  [1, 0, 2],
+  [1, 2, 0],
+  [1, 0, 2],
+];
 const minutes = [35, 50, 35, 50, 50];
 
 describe("supplied beginner lessons", () => {
@@ -39,10 +51,14 @@ describe("supplied beginner lessons", () => {
     render(<Quiz questions={quiz.questions} />);
     const submit = screen.getByRole("button", { name: "Submit answers" });
     expect(submit).toBeDisabled();
-    const radios = screen.getAllByRole("radio");
-    [0, 4, 8].forEach((i) => { const radio = radios[i]; if (radio) fireEvent.click(radio); });
+    for (const question of quiz.questions) {
+      const answer = question.options[question.correct]!.en.replaceAll("`", "");
+      fireEvent.click(screen.getByRole("radio", { name: (name) => name.endsWith(answer) }));
+    }
     expect(submit).toBeEnabled();
-    expect(screen.queryByText(quiz.questions[0]?.explanation.en ?? "missing")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(quiz.questions[0]?.explanation.en ?? "missing"),
+    ).not.toBeInTheDocument();
     fireEvent.click(submit);
     expect(screen.getByText("3 / 3")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -51,7 +67,13 @@ describe("supplied beginner lessons", () => {
   });
 
   it("does not reveal hints or solutions before requested", () => {
-    const block: Block = { type: "challenge", title: { en: "Test", fr: "Test" }, task: { en: "Task", fr: "Tâche" }, hints: [{ en: "Private hint", fr: "Indice" }], solution: [{ type: "p", text: { en: "Private solution", fr: "Solution" } }] };
+    const block: Block = {
+      type: "challenge",
+      title: { en: "Test", fr: "Test" },
+      task: { en: "Task", fr: "Tâche" },
+      hints: [{ en: "Private hint", fr: "Indice" }],
+      solution: [{ type: "p", text: { en: "Private solution", fr: "Solution" } }],
+    };
     render(<Blocks blocks={[block]} />);
     expect(screen.queryByText("Private hint")).not.toBeInTheDocument();
     expect(screen.queryByText("Private solution")).not.toBeInTheDocument();

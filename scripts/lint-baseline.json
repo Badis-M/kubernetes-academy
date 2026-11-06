@@ -7,25 +7,10 @@
       "fingerprint": "f78b46cd7b740c1f8b37833c2ade054551b9901052a9efae5c124aab99f3d4a9",
       "diagnostics": 5
     },
-    "src/components/academy/Quiz.tsx": {
-      "sourceHash": "5f1c85a942fdcca27dc0de2816e53bfc63591743c0af32c459521f3416e53714",
-      "fingerprint": "9be2246fce4458380a8e9a83dd7e7aaeca9830b9317a03132eb5f92fbf66a5fd",
-      "diagnostics": 14
-    },
     "src/components/academy/RichText.tsx": {
       "sourceHash": "d9fe50f884f56b521b42a5944e056eb202463eb34cb218b2e06026e6ce129b5d",
       "fingerprint": "716b4fea226bfe0e5b40c3108c14a4a5afb6532d765389461047dae59b3a4a4f",
       "diagnostics": 1
-    },
-    "src/components/diagrams/ArchitectureDiagram.tsx": {
-      "sourceHash": "cb7aa7b1df94ef8c80eb21c1e4144b3bf8c3f318e625d3db9cc093e764117385",
-      "fingerprint": "7c3ca86265c085d20c7e438efcd21d1fc296d76a79f248649a8dacced6bd2f97",
-      "diagnostics": 75
-    },
-    "src/components/diagrams/ReconcileDiagram.tsx": {
-      "sourceHash": "a5009091e93c104ed75704ac73b76922e125dba4cf456ea80ff57f15d0844aa6",
-      "fingerprint": "a8786b0ce7fb120d5364bd46ca0a217543537875ddbc4531e8409af015814035",
-      "diagnostics": 18
     },
     "src/components/diagrams/SmallDiagrams.tsx": {
       "sourceHash": "bc1205ac6e94893c6cf9783e7d4d4513570d4bf5ea3ffbef1f7f3d51a075e22d",
@@ -61,56 +46,6 @@
       "sourceHash": "62e6e21993f1ab633b9f830cbbf0c181f3d161bae3a7792dbf2d842d42a2f09c",
       "fingerprint": "ac6ed567a2db4145a306ac63a54a609b6ed665290c9cca01b5ef614700346b9a",
       "diagnostics": 1
-    },
-    "src/content/chapters/configmaps-secrets.ts": {
-      "sourceHash": "9d50a97c139c081210805b7fba6263a2397a75487b56357de526f73a5604751c",
-      "fingerprint": "81913d3414a51c4abb2ecee62a0825517b161f6abaef59410963689b0777af07",
-      "diagnostics": 395
-    },
-    "src/content/chapters/kubectl-troubleshooting.ts": {
-      "sourceHash": "f17115431d243678534f4bc3ce159350afac843a97b52030de83bf8fd2f653ee",
-      "fingerprint": "62e6b9c93e79181b7e6ce7e3382412b7e766b0a0e3887e94eca9462c34645023",
-      "diagnostics": 397
-    },
-    "src/content/chapters/labels-selectors.ts": {
-      "sourceHash": "42653de701ad1f66f9e1da9bb2c59f79089a5f150593bafb64fab239ca73c9e6",
-      "fingerprint": "f20a52ca259705c17aaf9d43113b75e61698b3195a7d4381d37e08a3fb11612c",
-      "diagnostics": 371
-    },
-    "src/content/chapters/namespaces-contexts.ts": {
-      "sourceHash": "03b3030df7bc1212a9b29ed80472a5d1532e51305621e4993f1b5d45435e79cb",
-      "fingerprint": "1ac180c44791bd82dc38c1880d2f0f11758ca27730f7251baa6166ffce23f46d",
-      "diagnostics": 361
-    },
-    "src/content/quiz.ts": {
-      "sourceHash": "d9dad67e67c36f3ab2381b9a565c72da4735f1871862646c9924e7203aadbc02",
-      "fingerprint": "c0381ec8bd9023c5f20f191938ec2754726ccada2a79a7d76a806d68c8f1afa1",
-      "diagnostics": 1
-    },
-    "src/lib/i18n.tsx": {
-      "sourceHash": "4bb3baf7cf267f60faed90235418b2dd6a88d1bb69d12a84de4bfe955e2b9a4f",
-      "fingerprint": "0c3a3b2bf34078fed3e9a06a63ad006595d1ef75670c953e8ec07c81635fd71b",
-      "diagnostics": 3
-    },
-    "src/lib/progress.tsx": {
-      "sourceHash": "5c5b93e8b72b11ce8b89c0007fc55f5129f470262463361cd509d0965d1213eb",
-      "fingerprint": "17ca7fae291b796fdb7cc93a017d74713bc3bdc391927b0c99ab2d3cb428f549",
-      "diagnostics": 1
-    },
-    "src/routes/k8s-basics.tsx": {
-      "sourceHash": "faef0abf05085987b65eec774d94273652eaff46b6eb4d6ca3cecbcb724711d1",
-      "fingerprint": "7bce93559467b6db783ea1bc8c8225cfcb57f5879559e60c6aec07a0f3552546",
-      "diagnostics": 1
-    },
-    "src/routes/prerequisites.tsx": {
-      "sourceHash": "4cd28eab052f4051b28a0ff7c8ccf8d46398e6ac0c7fe6949dbb75e1393967b7",
-      "fingerprint": "30ea80dbb07e2097a3bc17985b6d7b55102859430300797d9f8b839c7c6f4d2b",
-      "diagnostics": 1
-    },
-    "src/test/beginner-integration.test.tsx": {
-      "sourceHash": "151724923f8a53479563465360dea3506154aeedf8fa66e08b9ed7e0da42c8f8",
-      "fingerprint": "a3e81806a49aead1e1b643a058c4b02e441ec06cc0c6191e800ed7794f4538b2",
-      "diagnostics": 6
     }
   }
 }

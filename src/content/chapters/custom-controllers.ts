@@ -110,7 +110,7 @@ export const customControllers: Chapter = {
     h("offline", "Compile and test before a real API", "Compiler et tester avant une vraie API"),
     code(
       "bash",
-      'umask 077\nLAB_OPERATOR_BUILD_DIR=$(mktemp -d)\nprintf \'Private build directory: %s\\n\' "$LAB_OPERATOR_BUILD_DIR"\ncd lab/level-4/custom-controllers/greeting-operator\nGOTOOLCHAIN=local go version\nGOTOOLCHAIN=local GOMAXPROCS=2 go test -p 2 ./...\nGOTOOLCHAIN=local GOMAXPROCS=2 go build -o "$LAB_OPERATOR_BUILD_DIR/greeting-controller" ./cmd\ncd ../../../..',
+      'umask 077 &&\nLAB_OPERATOR_BUILD_DIR=$(mktemp -d) &&\nprintf \'Private build directory: %s\\n\' "$LAB_OPERATOR_BUILD_DIR" &&\nGOTOOLCHAIN=local go -C lab/level-4/custom-controllers/greeting-operator version &&\nGOTOOLCHAIN=local GOMAXPROCS=2 go -C lab/level-4/custom-controllers/greeting-operator test -p 2 ./... &&\nGOTOOLCHAIN=local GOMAXPROCS=2 go -C lab/level-4/custom-controllers/greeting-operator build -o "$LAB_OPERATOR_BUILD_DIR/greeting-controller" ./cmd',
     ),
     note(
       "info",
@@ -121,6 +121,14 @@ export const customControllers: Chapter = {
       ),
     ),
     ...labContext("lab-operator"),
+    p(
+      "Python 3 is required. The four Greeting lessons share one receipt in LAB_GREETING_STATE. Create it only once in this shell and reuse the same path across these chapters. The helper creates an absent CRD, or verifies its recorded UID and exact server-returned spec; it never applies over an existing definition. Without the original receipt, stop. After a failed creation, inspect the partial state instead of deleting the receipt or adopting the type. Keep managers stopped while changing lessons.",
+      "Python 3 est requis. Les quatre cours Greeting partagent une preuve dans LAB_GREETING_STATE. Préparez-la une seule fois dans ce shell et réutilisez le même chemin entre ces chapitres. Le helper crée une CRD absente ou vérifie son UID enregistré et sa spec exacte retournée par le serveur ; il ne remplace jamais une définition existante. Sans preuve d’origine, arrêtez-vous. Après une création échouée, inspectez l’état partiel au lieu de supprimer la preuve ou d’adopter le type. Arrêtez les managers avant de changer de cours.",
+    ),
+    code(
+      "bash",
+      'if [ -z "${LAB_GREETING_STATE:-}" ]; then\n  shared_dir=$(mktemp -d) &&\n    export LAB_GREETING_STATE="$shared_dir/greeting-schema.json"\nfi\ntest -n "${LAB_GREETING_STATE:-}"',
+    ),
     h("live", "Optional runtime observation", "Observation réelle optionnelle"),
     code("yaml", sample, "lab/level-4/crds/hello.yaml"),
     steps(
@@ -131,7 +139,7 @@ export const customControllers: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: 'k apply -f lab/level-4/crds/greetings.yaml\nk wait --for=condition=Established crd/greetings.learning.k8svisual.dev --timeout=60s\n"$LAB_OPERATOR_BUILD_DIR/greeting-controller" --context kind-k8s-ops-lab --namespace lab-operator',
+          code: 'python3 lab/scripts/greeting-schema.py "${LAB_GREETING_STATE:?Prepare the shared receipt first}" &&\nk wait --for=condition=Established crd/greetings.learning.k8svisual.dev --timeout=60s &&\n"$LAB_OPERATOR_BUILD_DIR/greeting-controller" --context kind-k8s-ops-lab --namespace lab-operator',
         },
         explain: l(
           "First apply the CRD ownership check from the preceding chapter. This foreground process uses your explicitly selected kubeconfig identity and watches one namespace. A namespaced cache does not reduce that identity's underlying permissions. Stop it with Ctrl+C when finished.",
@@ -145,7 +153,7 @@ export const customControllers: Chapter = {
         ),
         code: {
           lang: "bash",
-          code: "alias k='kubectl --context kind-k8s-ops-lab'\nLAB_GREETING_GENERATION=$(kubectl --context kind-k8s-ops-lab -n lab-operator apply -f lab/level-4/crds/hello.yaml -o jsonpath='{.metadata.generation}')\nkubectl --context kind-k8s-ops-lab -n lab-operator wait --for=jsonpath='{.status.observedGeneration}'=\"$LAB_GREETING_GENERATION\" greeting/hello --timeout=180s\nkubectl --context kind-k8s-ops-lab -n lab-operator wait --for=condition=Ready greeting/hello --timeout=180s\nkubectl --context kind-k8s-ops-lab -n lab-operator get greeting hello -o yaml\nkubectl --context kind-k8s-ops-lab -n lab-operator port-forward service/hello 8082:8080",
+          code: "alias k='kubectl --context kind-k8s-ops-lab' &&\nLAB_GREETING_GENERATION=$(kubectl --context kind-k8s-ops-lab -n lab-operator apply -f lab/level-4/crds/hello.yaml -o jsonpath='{.metadata.generation}') &&\nkubectl --context kind-k8s-ops-lab -n lab-operator wait --for=jsonpath='{.status.observedGeneration}'=\"$LAB_GREETING_GENERATION\" greeting/hello --timeout=180s &&\nkubectl --context kind-k8s-ops-lab -n lab-operator wait --for=condition=Ready greeting/hello --timeout=180s &&\nkubectl --context kind-k8s-ops-lab -n lab-operator get greeting hello -o yaml &&\nkubectl --context kind-k8s-ops-lab -n lab-operator port-forward service/hello 8082:8080",
         },
         explain: l(
           "The apply returns the exact desired generation; wait until status observes it before accepting Ready, including when resuming this example. Use curl --fail http://127.0.0.1:8082/ from a third terminal. Port 8081 belongs to the local manager's health endpoint and 8080 may belong to this website.",
@@ -242,7 +250,7 @@ export const customControllers: Chapter = {
       [
         code(
           "bash",
-          `LAB_GREETING_GENERATION=$(k -n lab-operator patch greeting hello --type=merge -p '{"spec":{"replicas":2}}' -o jsonpath='{.metadata.generation}')\nk -n lab-operator wait --for=jsonpath='{.status.observedGeneration}'="$LAB_GREETING_GENERATION" greeting/hello --timeout=180s\nk -n lab-operator wait --for=condition=Ready greeting/hello --timeout=180s\nk -n lab-operator get greeting hello -o yaml\nk -n lab-operator rollout status deployment/hello --timeout=180s`,
+          "LAB_GREETING_GENERATION=$(k -n lab-operator patch greeting hello --type=merge -p '{\"spec\":{\"replicas\":2}}' -o jsonpath='{.metadata.generation}') &&\nk -n lab-operator wait --for=jsonpath='{.status.observedGeneration}'=\"$LAB_GREETING_GENERATION\" greeting/hello --timeout=180s &&\nk -n lab-operator wait --for=condition=Ready greeting/hello --timeout=180s &&\nk -n lab-operator get greeting hello -o yaml &&\nk -n lab-operator rollout status deployment/hello --timeout=180s",
         ),
         p(
           "Expected: two updated ready replicas and a status condition for the new Greeting generation. First wait for the exact generation returned by the patch: rollout status alone could finish against the previous Deployment before the custom controller updates it. Direct child scaling is repaired on reconciliation because desired replicas still come from Greeting. Supporting autoscaling needs an explicit scale API/ownership design rather than two controllers continuously undoing each other.",
@@ -252,8 +260,8 @@ export const customControllers: Chapter = {
     ),
     h("cleanup", "Stop reconciliation before cleanup", "Arrêter la réconciliation avant nettoyage"),
     p(
-      "Stop the local manager and port-forward with Ctrl+C. Delete only the dedicated namespace; it removes the sample instances and their children. The CRD is shared with the other extension lessons: remove it only after the cluster-wide instance check described in the CRD chapter. Compilation and unit tests require no such runtime cleanup. After stopping the manager, inspect and manually remove only LAB_OPERATOR_BUILD_DIR, the printed private build directory.",
-      "Arrêtez manager et port-forward avec Ctrl+C. Supprimez seulement le namespace dédié avec ses instances et enfants. La CRD est partagée : ne la retirez qu’après le contrôle global d’instances décrit au chapitre CRD. Compilation et tests unitaires ne nécessitent aucun nettoyage réel. Après arrêt du manager, examinez puis retirez uniquement LAB_OPERATOR_BUILD_DIR, le dossier de build privé affiché.",
+      "Stop the local manager and port-forward with Ctrl+C. Delete only the dedicated namespace; it removes the sample instances and their children. The CRD is shared with the other extension lessons: keep its original receipt and leave the definition in place until the dedicated lab cluster is discarded. Compilation and unit tests require no such runtime cleanup. After stopping the manager, inspect and manually remove only LAB_OPERATOR_BUILD_DIR, the printed private build directory.",
+      "Arrêtez manager et port-forward avec Ctrl+C. Supprimez seulement le namespace dédié avec ses instances et enfants. La CRD est partagée : conservez sa preuve d’origine et la définition jusqu’au retrait final du cluster de lab dédié. Compilation et tests unitaires ne nécessitent aucun nettoyage réel. Après arrêt du manager, examinez puis retirez uniquement LAB_OPERATOR_BUILD_DIR, le dossier de build privé affiché.",
     ),
     code("bash", "k delete namespace lab-operator"),
   ],

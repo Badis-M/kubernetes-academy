@@ -55,8 +55,8 @@ export const etcd: Chapter = {
       "warn",
       l("Only synthetic isolated etcd", "Uniquement un etcd synthétique isolé"),
       l(
-        "The learner needs a verified local Docker daemon, Bash, Python 3 and registry access for quay.io/coreos/etcd:v3.6.5. No container is started by the implementation agent. The supplied script refuses existing lab container/volume names, publishes no ports and uses --network none, never host paths, kubeconfigs or /var/lib/etcd. Its HTTP endpoints exist only on each isolated container's loopback; production etcd requires authenticated TLS and access isolation. This example is not a Kubernetes cluster-recovery runbook.",
-        "L’apprenant doit disposer d’un Docker local vérifié, Bash, Python 3 et de l’accès à quay.io/coreos/etcd:v3.6.5. L’agent ne démarre aucun conteneur. Le script refuse les noms de conteneurs/volumes existants, ne publie aucun port et utilise --network none, jamais chemins hôte, kubeconfigs ou /var/lib/etcd. Les endpoints HTTP n’existent que sur la boucle locale des conteneurs isolés ; etcd en production exige TLS authentifié et accès isolé. Cet exemple n’est pas une procédure de reprise d’un cluster Kubernetes.",
+        "The learner needs a verified local Docker daemon, Bash, Python 3 and registry access for quay.io/coreos/etcd:v3.6.5. Run the script yourself on the verified local daemon. The supplied script refuses existing lab container/volume names, publishes no ports and uses --network none, never host paths, kubeconfigs or /var/lib/etcd. Its HTTP endpoints exist only on each isolated container's loopback; production etcd requires authenticated TLS and access isolation. This example is not a Kubernetes cluster-recovery runbook.",
+        "L’apprenant doit disposer d’un Docker local vérifié, Bash, Python 3 et de l’accès à quay.io/coreos/etcd:v3.6.5. Exécutez le script sur le daemon local vérifié. Le script refuse les noms de conteneurs/volumes existants, ne publie aucun port et utilise --network none, jamais chemins hôte, kubeconfigs ou /var/lib/etcd. Les endpoints HTTP n’existent que sur la boucle locale des conteneurs isolés ; etcd en production exige TLS authentifié et accès isolé. Cet exemple n’est pas une procédure de reprise d’un cluster Kubernetes.",
       ),
     ),
     code(
@@ -85,6 +85,7 @@ export const etcd: Chapter = {
       "The snapshot hash is checked during restore. --bump-revision and --mark-compacted address a distinct hazard: restored revisions can otherwise move backwards relative to informer/watch clients. Bumping beyond observed historical revisions and marking history compacted forces consumers to rebuild caches rather than trust a stale future. The billion-revision bump is an explicit teaching margin, not a universal sizing rule. In real Kubernetes recovery, derive it from the write rate and snapshot age and follow the distribution's version-specific restoration procedure.",
       "Le hash du snapshot est vérifié à la restauration. --bump-revision et --mark-compacted traitent un autre risque : les révisions restaurées pourraient reculer face aux clients informer/watch. Dépasser les anciennes révisions observées et marquer l’historique compacté force les clients à reconstruire leur cache plutôt qu’à croire un futur périmé. Le milliard ajouté est une marge pédagogique explicite, pas une règle universelle. Pour Kubernetes réel, dimensionnez-le selon débit d’écriture et âge du snapshot, puis suivez la procédure de votre distribution et version.",
     ),
+    { type: "diagram", name: "etcd-snapshot-timeline" },
     h(
       "diagnosis",
       "Observe the store before blaming the API server",

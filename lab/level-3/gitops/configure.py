@@ -37,17 +37,22 @@ def main() -> None:
     if args.output_dir.is_symlink():
         parser.error("output directory must not be a symbolic link")
     args.output_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    filenames = ("argocd.yaml", "flux.yaml")
-    for filename in filenames:
+    documents = {}
+    for filename in ("argocd.yaml", "flux.yaml"):
+        documents[filename] = (source_dir / filename).read_text(encoding="utf-8").replace(
+            "REPLACE_REPO_URL", args.repository
+        ).replace("REPLACE_COMMIT_SHA", args.commit.lower())
+    # Separate creates preserve the UID of a successfully created project even
+    # when Application creation fails. The combined template remains reviewable.
+    project, application = documents["argocd.yaml"].split("\n---\n")
+    documents["argo-project.yaml"] = project + "\n"
+    documents["argo-application.yaml"] = application
+    for filename in documents:
         destination = args.output_dir / filename
         # A broken link also belongs to the caller; never replace its target.
         if destination.exists() or destination.is_symlink():
             parser.error(f"refusing to overwrite {destination}; choose a new output directory")
-    for filename in filenames:
-        source = (source_dir / filename).read_text(encoding="utf-8")
-        rendered = source.replace("REPLACE_REPO_URL", args.repository).replace(
-            "REPLACE_COMMIT_SHA", args.commit.lower()
-        )
+    for filename, rendered in documents.items():
         destination = args.output_dir / filename
         # Exclusive creation also refuses a file introduced after the preflight.
         with destination.open("x", encoding="utf-8") as output:
