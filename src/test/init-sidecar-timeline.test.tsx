@@ -94,17 +94,22 @@ for (const lang of ["fr", "en"] as const) {
     );
     for (const scenario of scenarios) {
       fireEvent.click(screen.getByRole("button", { name: scenario.label[lang] }));
-      const table = screen.getByRole("table");
-      expect(within(table).getAllByRole("row")).toHaveLength(4);
+      const table = screen.getByRole<HTMLTableElement>("table");
+      const columns = within(table).getAllByRole("button");
+      expect(table.rows).toHaveLength(4);
       expect(within(table).getAllByRole("cell")).toHaveLength(scenario.steps.length * 3);
       scenario.steps.forEach((step, index) => {
-        fireEvent.click(within(table).getAllByRole("button")[index]!);
-        expect(within(table).getAllByRole("button", { pressed: true })).toHaveLength(1);
+        fireEvent.click(columns[index]!);
+        expect(columns.filter((column) => column.getAttribute("aria-pressed") === "true")).toEqual([
+          columns[index],
+        ]);
         expect(screen.getByText(step.description[lang])).toBeInTheDocument();
         scenario.timeline!.tracks.forEach((track, row) => {
           expect(track.states).toHaveLength(scenario.steps.length);
-          const cells = within(within(table).getAllByRole("row")[row + 1]!).getAllByRole("cell");
-          expect(cells[index]).toHaveTextContent(track.states[index]!.label[lang]);
+          // The first cell in each body row is the row header.
+          expect(table.rows[row + 1]?.cells[index + 1]).toHaveTextContent(
+            track.states[index]!.label[lang],
+          );
           expect(step.scene![0]!.nodes[row]!.detail[lang]).toContain(
             track.states[index]!.label[lang],
           );
