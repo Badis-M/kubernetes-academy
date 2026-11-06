@@ -1,8 +1,12 @@
 import { Link } from "@tanstack/react-router";
+import { Heart } from "lucide-react";
 import { ui, useLang } from "@/lib/i18n";
+
+const SUPPORT_URL = "https://ko-fi.com/badism";
 
 export function SiteHeader() {
   const { tr, lang, setLang } = useLang();
+  const supportLabel = tr({ fr: "Me soutenir", en: "Support me" });
   const links = [
     { to: "/academy", label: tr({ en: "Courses", fr: "Cours" }) },
     { to: "/lab", label: tr(ui.lab) },
@@ -36,22 +40,32 @@ export function SiteHeader() {
               {l.label}
             </Link>
           ))}
-          <div
-            className="ml-2 flex rounded-lg border border-border p-0.5 font-mono text-[11px]"
-            role="group"
-            aria-label={lang === "fr" ? "Langue" : "Language"}
-          >
-            {(["fr", "en"] as const).map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => setLang(l)}
-                aria-pressed={lang === l}
-                className={`rounded-md px-2 py-1 uppercase transition ${lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                {l}
-              </button>
-            ))}
+          <div className="flex shrink-0 items-center gap-1">
+            <a
+              href={SUPPORT_URL}
+              aria-label={supportLabel}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5"
+            >
+              <Heart className="size-4" aria-hidden="true" />
+              <span className="hidden whitespace-nowrap sm:inline">{supportLabel}</span>
+            </a>
+            <div
+              className="flex rounded-lg border border-border p-0.5 font-mono text-[11px]"
+              role="group"
+              aria-label={lang === "fr" ? "Langue" : "Language"}
+            >
+              {(["fr", "en"] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLang(l)}
+                  aria-pressed={lang === l}
+                  className={`rounded-md px-2 py-1 uppercase transition ${lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
         </nav>
       </div>
@@ -60,7 +74,7 @@ export function SiteHeader() {
 }
 
 export function SiteFooter() {
-  const { lang } = useLang();
+  const { lang, tr } = useLang();
   const links = [
     { label: "Portfolio", href: "https://portfolio.badismerakchi.com/" },
     { label: "Consulting", href: "https://consulting.badismerakchi.com/" },
@@ -83,6 +97,19 @@ export function SiteFooter() {
             >
               Badis M
             </a>
+          </p>
+          <a
+            href={SUPPORT_URL}
+            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 font-medium text-primary transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Heart className="size-4 shrink-0" aria-hidden="true" />
+            {tr({ fr: "Soutenir Kubernetes Academy", en: "Support Kubernetes Academy" })}
+          </a>
+          <p className="mt-2 max-w-xs text-xs">
+            {tr({
+              fr: "Le soutien est facultatif. Tous les cours restent gratuits.",
+              en: "Support is optional. All courses remain free.",
+            })}
           </p>
         </div>
         <nav
